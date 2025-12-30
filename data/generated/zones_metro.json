@@ -339,17 +339,6 @@
         ]
     },
     {
-        "id": "494277",
-        "name": "Université Paris-Saclay",
-        "type": "metroStation",
-        "town": "Orsay",
-        "postal_region": "91471",
-        "x_lambert_93": 639193,
-        "y_lambert_93": 6846099,
-        "accesses": [],
-        "lines": []
-    },
-    {
         "id": "45101",
         "name": "Bourse",
         "type": "metroStation",
@@ -7599,52 +7588,6 @@
         ]
     },
     {
-        "id": "45558",
-        "name": "Funiculaire de Montmartre - Gare haute",
-        "type": "metroStation",
-        "town": "Paris 18e",
-        "postal_region": "75118",
-        "x_lambert_93": 651787,
-        "y_lambert_93": 6865263,
-        "accesses": [
-            {
-                "id": "50147931",
-                "name": "Entrée / Sortie",
-                "short_name": 0,
-                "x_lambert_93": 651778,
-                "y_lambert_93": 6865280,
-                "geo_point": {
-                    "lon": 2.342414209468209,
-                    "lat": 48.885727882381396
-                }
-            }
-        ],
-        "lines": []
-    },
-    {
-        "id": "45559",
-        "name": "Funiculaire de Montmartre - Gare basse",
-        "type": "metroStation",
-        "town": "Paris 18e",
-        "postal_region": "75118",
-        "x_lambert_93": 651791,
-        "y_lambert_93": 6865165,
-        "accesses": [
-            {
-                "id": "50147930",
-                "name": "Entrée / Sortie",
-                "short_name": 0,
-                "x_lambert_93": 651785,
-                "y_lambert_93": 6865148,
-                "geo_point": {
-                    "lon": 2.3425246490205707,
-                    "lat": 48.88454137479853
-                }
-            }
-        ],
-        "lines": []
-    },
-    {
         "id": "44833",
         "name": "Simplon",
         "type": "metroStation",
@@ -11051,17 +10994,6 @@
         ]
     },
     {
-        "id": "473874",
-        "name": "Antony",
-        "type": "metroStation",
-        "town": "Antony",
-        "postal_region": "92002",
-        "x_lambert_93": 648594,
-        "y_lambert_93": 6850713,
-        "accesses": [],
-        "lines": []
-    },
-    {
         "id": "42337",
         "name": "Blanche",
         "type": "metroStation",
@@ -11091,17 +11023,6 @@
                 "icon_filename": "metro_2.svg"
             }
         ]
-    },
-    {
-        "id": "494273",
-        "name": "Massy - Palaiseau",
-        "type": "metroStation",
-        "town": "Massy",
-        "postal_region": "91377",
-        "x_lambert_93": 645465,
-        "y_lambert_93": 6847458,
-        "accesses": [],
-        "lines": []
     },
     {
         "id": "44909",
@@ -15186,17 +15107,6 @@
         ]
     },
     {
-        "id": "494279",
-        "name": "Christ de Saclay",
-        "type": "metroStation",
-        "town": "Saclay",
-        "postal_region": "91534",
-        "x_lambert_93": 638343,
-        "y_lambert_93": 6848073,
-        "accesses": [],
-        "lines": []
-    },
-    {
         "id": "483901",
         "name": "Aimé Césaire",
         "type": "metroStation",
@@ -19115,17 +19025,6 @@
                 "icon_filename": "metro_13.svg"
             }
         ]
-    },
-    {
-        "id": "494275",
-        "name": "Polytechnique",
-        "type": "metroStation",
-        "town": "Palaiseau",
-        "postal_region": "91477",
-        "x_lambert_93": 641221,
-        "y_lambert_93": 6846436,
-        "accesses": [],
-        "lines": []
     },
     {
         "id": "470548",
