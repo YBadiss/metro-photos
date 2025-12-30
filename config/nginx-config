@@ -13,4 +13,19 @@ server {
     # Logging
     access_log /var/log/nginx/metro-boulot.photos.access.log;
     error_log /var/log/nginx/metro-boulot.photos.error.log;
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/metro-boulot.photos/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/metro-boulot.photos/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
+}
+server {
+    if ($host = metro-boulot.photos) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
+    server_name metro-boulot.photos www.metro-boulot.photos;
+    listen 80;
+    return 404; # managed by Certbot
 }
