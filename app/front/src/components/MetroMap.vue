@@ -20,6 +20,9 @@ const minZoom = 12
 const maxZoom = 19
 let map = null
 let markersLayer = null
+let selectedAccess = null
+let selectedZone = null
+let allMarkers = [] // Store all markers with their metadata
 
 onMounted(() => {
   // Initialize the map centered on Paris with zoom constraints
@@ -43,7 +46,10 @@ onMounted(() => {
   }
 
   // Update marker sizes when zoom level changes
-  map.on('zoomend', updateMarkerSizes)
+  map.on('zoomend', updateMarkers)
+
+  // Click anywhere on the map to reset selection
+  map.on('click', resetSelection)
 })
 
 // Watch for changes in zones data
@@ -59,9 +65,10 @@ function getRadiusForZoom(zoom) {
  * Create a pie chart SVG icon for markers with multiple line colors
  * @param {Array} colors - Array of color strings for each line
  * @param {number} size - Diameter of the circle in pixels
+ * @param {boolean} dimmed - Whether to dim the marker
  * @returns {L.DivIcon} Leaflet div icon with SVG pie chart
  */
-function createPieChartIcon(colors, size) {
+function createPieChartIcon(colors, size, dimmed = false) {
   const radius = size / 2
   const center = size / 2
 
@@ -71,10 +78,11 @@ function createPieChartIcon(colors, size) {
   }
 
   let svgSegments = ''
+  const opacity = dimmed ? 0.2 : 1
 
   if (colors.length === 1) {
     // Single color - just a circle
-    svgSegments = `<circle cx="${center}" cy="${center}" r="${radius - 1}" fill="${colors[0]}" stroke="#000" stroke-width="1"/>`
+    svgSegments = `<circle cx="${center}" cy="${center}" r="${radius - 1}" fill="${colors[0]}" stroke="#000" stroke-width="1" opacity="${opacity}"/>`
   } else {
     // Multiple colors - create pie slices
     const anglePerSegment = 360 / colors.length
@@ -97,11 +105,11 @@ function createPieChartIcon(colors, size) {
       const largeArcFlag = anglePerSegment > 180 ? 1 : 0
       const pathData = `M ${center},${center} L ${x1},${y1} A ${radius - 1},${radius - 1} 0 ${largeArcFlag},1 ${x2},${y2} Z`
 
-      svgSegments += `<path d="${pathData}" fill="${color}" stroke="#000" stroke-width="0.5"/>`
+      svgSegments += `<path d="${pathData}" fill="${color}" stroke="#000" stroke-width="0.5" opacity="${opacity}"/>`
     })
 
     // Add border circle
-    svgSegments += `<circle cx="${center}" cy="${center}" r="${radius - 1}" fill="none" stroke="#000" stroke-width="1"/>`
+    svgSegments += `<circle cx="${center}" cy="${center}" r="${radius - 1}" fill="none" stroke="#000" stroke-width="1" opacity="${opacity}"/>`
   }
 
   const svg = `
@@ -118,11 +126,79 @@ function createPieChartIcon(colors, size) {
   })
 }
 
+/**
+ * Check if two accesses share any metro lines
+ */
+function shareLines(zone1, zone2) {
+  const lines1 = zone1.lines.map(l => l.id)
+  const lines2 = zone2.lines.map(l => l.id)
+  return lines1.some(id => lines2.includes(id))
+}
+
+/**
+ * Reset selection and show all markers normally
+ */
+function resetSelection() {
+  if (selectedAccess === null) return
+
+  selectedAccess = null
+  selectedZone = null
+
+  const currentZoom = map.getZoom()
+  const radius = getRadiusForZoom(currentZoom)
+  const markerSize = radius * 2
+
+  allMarkers.forEach(({ marker, zone }) => {
+    const lineColors = zone.lines.map(line => line.color).filter(color => color)
+    const icon = createPieChartIcon(lineColors, markerSize, false)
+    marker.setIcon(icon)
+  })
+}
+
+/**
+ * Handle marker click - highlight related accesses
+ */
+function onMarkerClick(clickedMarkerData, event) {
+  // Prevent the map click event from firing
+  L.DomEvent.stopPropagation(event)
+
+  const { zone: clickedZone, access: clickedAccess } = clickedMarkerData
+
+  // If clicking the same access again, reset
+  if (selectedAccess && selectedAccess.id === clickedAccess.id) {
+    resetSelection()
+    return
+  }
+  onMarkerSelect(clickedAccess, clickedZone)
+}
+
+function onMarkerSelect(access, zone) {
+  selectedAccess = access
+  selectedZone = zone
+
+  // Update all markers
+  const currentZoom = map.getZoom()
+  const radius = getRadiusForZoom(currentZoom)
+  const markerSize = radius * 2
+
+  allMarkers.forEach(({ marker, zone, access }) => {
+    const lineColors = zone.lines.map(line => line.color).filter(color => color)
+
+    // Check if this access shares lines with the clicked one
+    const isRelated = shareLines(zone, selectedZone) || access.id === selectedAccess.id
+
+    // Update icon with dimming
+    const icon = createPieChartIcon(lineColors, markerSize, !isRelated)
+    marker.setIcon(icon)
+  })
+}
+
 function updateMarkers() {
   if (!markersLayer) return
 
   // Clear existing markers
   markersLayer.clearLayers()
+  allMarkers = []
 
   const currentZoom = map.getZoom()
   const radius = getRadiusForZoom(currentZoom)
@@ -130,7 +206,7 @@ function updateMarkers() {
 
   // Add markers for each zone and its accesses
   props.zones.forEach(zone => {
-    // Get colors from the zone's lines (assuming each line has a 'color' field)
+    // Get colors from the zone's lines
     const lineColors = zone.lines.map(line => line.color).filter(color => color)
 
     // Add markers for each access point
@@ -141,26 +217,35 @@ function updateMarkers() {
       const icon = createPieChartIcon(lineColors, markerSize)
       const marker = L.marker([lat, lon], { icon })
 
-      // Create popup content
+      // Create tooltip for hover
       const lines = zone.lines.map(line => line.name).join(', ')
-      const popupContent = `
-        <div class="metro-popup">
-          <h3>${zone.name}</h3>
-          <p><strong>Access:</strong> ${access.name}</p>
-          <p><strong>Lines:</strong> ${lines || 'N/A'}</p>
-          <p><strong>Town:</strong> ${zone.town}</p>
+      const tooltipContent = `
+        <div class="metro-tooltip">
+          <strong>${zone.name}</strong><br>
+          ${access.name}<br>
+          <span style="font-size: 11px; color: #666;">${lines || 'N/A'}</span>
         </div>
       `
+      marker.bindTooltip(tooltipContent, {
+        direction: 'top',
+        offset: [0, -radius],
+        className: 'custom-tooltip'
+      })
 
-      marker.bindPopup(popupContent)
+      // Store marker data for click interactions
+      const markerData = { marker, zone, access }
+      allMarkers.push(markerData)
+
+      // Add click handler
+      marker.on('click', (e) => onMarkerClick(markerData, e))
+
       markersLayer.addLayer(marker)
     })
   })
-}
 
-function updateMarkerSizes() {
-  // Redraw markers with new sizes when zoom changes
-  updateMarkers()
+  if (selectedAccess) {
+    onMarkerSelect(selectedAccess, selectedZone)
+  }
 }
 </script>
 
@@ -192,5 +277,18 @@ function updateMarkerSizes() {
 .pie-chart-marker {
   background: none !important;
   border: none !important;
+  transition: opacity 0.3s ease;
+}
+
+/* Tooltip styles */
+.metro-tooltip {
+  font-size: 13px;
+  line-height: 1.4;
+  padding: 2px 0;
+}
+
+.metro-tooltip strong {
+  font-weight: 600;
+  color: #333;
 }
 </style>
