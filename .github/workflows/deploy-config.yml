@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - .github/workflows/deploy-config.yml
       - config/**
 
 jobs:
