@@ -1,0 +1,359 @@
+[
+    {
+        "id": "A02710",
+        "name": "CABLE 1",
+        "color": "#ffffff",
+        "icon_url": null,
+        "icon_filename": null
+    },
+    {
+        "id": "A01516",
+        "name": "CDGVAL",
+        "color": "#ffffff",
+        "icon_url": null,
+        "icon_filename": null
+    },
+    {
+        "id": "A01548",
+        "name": "FUNICULAIRE MONTMARTRE",
+        "color": "#ffffff",
+        "icon_url": null,
+        "icon_filename": null
+    },
+    {
+        "id": "NR",
+        "name": "GL",
+        "color": "#ffffff",
+        "icon_url": null,
+        "icon_filename": null
+    },
+    {
+        "id": "A02171",
+        "name": "GL",
+        "color": "#ffffff",
+        "icon_url": null,
+        "icon_filename": null
+    },
+    {
+        "id": "A01534",
+        "name": "METRO 1",
+        "color": "#ffcb00",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/f99937fd31b1787d79e47d20b18f71c4",
+        "icon_filename": "metro_1.svg"
+    },
+    {
+        "id": "A01543",
+        "name": "METRO 10",
+        "color": "#edad3a",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/2354d638a96aaa2bdc700214befec049",
+        "icon_filename": "metro_10.svg"
+    },
+    {
+        "id": "A01544",
+        "name": "METRO 11",
+        "color": "#976238",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/964a06dc4dd9a4041b09c37567bd5b94",
+        "icon_filename": "metro_11.svg"
+    },
+    {
+        "id": "A01545",
+        "name": "METRO 12",
+        "color": "#008b5a",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/5629d91af00c9f8af73e2b4cfdbcbb49",
+        "icon_filename": "metro_12.svg"
+    },
+    {
+        "id": "A01546",
+        "name": "METRO 13",
+        "color": "#65d6df",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/1abb1d47991fd6f6cb130b89715ad9f1",
+        "icon_filename": "metro_13.svg"
+    },
+    {
+        "id": "A01547",
+        "name": "METRO 14",
+        "color": "#6e2c87",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/9bca75433eb738dae9e4d3657b7a3de5",
+        "icon_filename": "metro_14.svg"
+    },
+    {
+        "id": "A01535",
+        "name": "METRO 2",
+        "color": "#006db2",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/936e2e595d6b2f9c3555b888f90817a1",
+        "icon_filename": "metro_2.svg"
+    },
+    {
+        "id": "A01536",
+        "name": "METRO 3",
+        "color": "#9e9640",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/f78ce6bd7997c9c645e25ebdc320ff0a",
+        "icon_filename": "metro_3.svg"
+    },
+    {
+        "id": "A01549",
+        "name": "METRO 3bis",
+        "color": "#65d6df",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/84385f6415d8d60e0a135171e93312a5",
+        "icon_filename": "metro_3bis.svg"
+    },
+    {
+        "id": "A01537",
+        "name": "METRO 4",
+        "color": "#d1448f",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/40edb03ba8639ac2542ee899469bacdb",
+        "icon_filename": "metro_4.svg"
+    },
+    {
+        "id": "A01538",
+        "name": "METRO 5",
+        "color": "#ff8741",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/3c28f4bbbdd8db6a404f77a19c935273",
+        "icon_filename": "metro_5.svg"
+    },
+    {
+        "id": "A01539",
+        "name": "METRO 6",
+        "color": "#53c991",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/57c723464a2a0862aa51d73d8a09eff0",
+        "icon_filename": "metro_6.svg"
+    },
+    {
+        "id": "A01540",
+        "name": "METRO 7",
+        "color": "#ff97a8",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/0b6c43f2294318bf37466cef3a6c001a",
+        "icon_filename": "metro_7.svg"
+    },
+    {
+        "id": "A01550",
+        "name": "METRO 7bis",
+        "color": "#53c991",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/53a6369ab3772b0115d7c675f45329d2",
+        "icon_filename": "metro_7bis.svg"
+    },
+    {
+        "id": "A01541",
+        "name": "METRO 8",
+        "color": "#d0a0c7",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/fc7c7039b5a3e79675aeb4d59dce6f51",
+        "icon_filename": "metro_8.svg"
+    },
+    {
+        "id": "A01542",
+        "name": "METRO 9",
+        "color": "#d5c932",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/78e78b6d779fd1700a65a68abe9b1b7a",
+        "icon_filename": "metro_9.svg"
+    },
+    {
+        "id": "A01551",
+        "name": "ORLYVAL",
+        "color": "#ffffff",
+        "icon_url": null,
+        "icon_filename": null
+    },
+    {
+        "id": "A01856",
+        "name": "RER A",
+        "color": "#ff0000",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/2922fd9716bdb3b0487b2960b932652a",
+        "icon_filename": "RER_A.svg"
+    },
+    {
+        "id": "A01857",
+        "name": "RER B",
+        "color": "#238fc9",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/f0ebdb0b87223739c9f1195e894671c1",
+        "icon_filename": "RER_B.svg"
+    },
+    {
+        "id": "A01840",
+        "name": "RER C",
+        "color": "#ffcb00",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/591a3d854462a7db2751395e662d4e2c",
+        "icon_filename": "RER_C.svg"
+    },
+    {
+        "id": "A01842",
+        "name": "RER D",
+        "color": "#008b5a",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/e7ed6bbd66f9796902fee75b4b443a54",
+        "icon_filename": "RER_D.svg"
+    },
+    {
+        "id": "A01843",
+        "name": "RER E",
+        "color": "#d1448f",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/528f29b53fa23aaf2d4c4f0b14c0bf87",
+        "icon_filename": "RER_E.svg"
+    },
+    {
+        "id": "A01849",
+        "name": "TRAIN H",
+        "color": "#976238",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/3544694520ec675b39cbddf7993a4b79",
+        "icon_filename": "train_H.svg"
+    },
+    {
+        "id": "A01852",
+        "name": "TRAIN J",
+        "color": "#d5c932",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/eb304b4c7df86e2202acf8e0ac539751",
+        "icon_filename": "train_J.svg"
+    },
+    {
+        "id": "A02175",
+        "name": "TRAIN K",
+        "color": "#9e9640",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/cf0e0e961ab19271dd0a5e79cece251d",
+        "icon_filename": "train_K.svg"
+    },
+    {
+        "id": "A02176",
+        "name": "TRAIN L",
+        "color": "#d0a0c7",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/954a47388dc356e3473289e5f47d0270",
+        "icon_filename": "train_L.svg"
+    },
+    {
+        "id": "A01847",
+        "name": "TRAIN N",
+        "color": "#00b593",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/6c2116392b125e3a2f6d9d754db243a8",
+        "icon_filename": "train_N.svg"
+    },
+    {
+        "id": "A01844",
+        "name": "TRAIN P",
+        "color": "#ff8741",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/3216a7aca01ab7c67110982329e4a82e",
+        "icon_filename": "train_P.svg"
+    },
+    {
+        "id": "A01845",
+        "name": "TRAIN R",
+        "color": "#ff97a8",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/4ddabed87b80181debb386c00af5d5bb",
+        "icon_filename": "train_R.svg"
+    },
+    {
+        "id": "A01855",
+        "name": "TRAIN U",
+        "color": "#d00042",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/ad17c1cb67aaae07b61e7288ce4008c8",
+        "icon_filename": "train_U.svg"
+    },
+    {
+        "id": "A01840",
+        "name": "TRAIN V",
+        "color": "#ffcb00",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/591a3d854462a7db2751395e662d4e2c",
+        "icon_filename": "RER_C.svg"
+    },
+    {
+        "id": "A01191",
+        "name": "TRAM 1",
+        "color": "#006db2",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/dc9070ea3c17f6fad088a5ae8662c6d4",
+        "icon_filename": "tram_T1.svg"
+    },
+    {
+        "id": "A02527",
+        "name": "TRAM 10",
+        "color": "#ffffff",
+        "icon_url": null,
+        "icon_filename": null
+    },
+    {
+        "id": "A02225",
+        "name": "TRAM 11",
+        "color": "#ff8741",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/64d44c24623a56d07a336c8d92d1edda",
+        "icon_filename": "tram_T11.svg"
+    },
+    {
+        "id": "A02708",
+        "name": "TRAM 12",
+        "color": "#ffffff",
+        "icon_url": null,
+        "icon_filename": null
+    },
+    {
+        "id": "A02373",
+        "name": "TRAM 13",
+        "color": "#ffffff",
+        "icon_url": null,
+        "icon_filename": null
+    },
+    {
+        "id": "A02945",
+        "name": "TRAM 14",
+        "color": "#ffffff",
+        "icon_url": null,
+        "icon_filename": null
+    },
+    {
+        "id": "A01192",
+        "name": "TRAM 2",
+        "color": "#d1448f",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/6adc5920dae46cc3393723124d9e7886",
+        "icon_filename": "tram_T2.svg"
+    },
+    {
+        "id": "A01193",
+        "name": "TRAM 3a",
+        "color": "#ff8741",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/503e55ae906ef2c635f866cebaf92614",
+        "icon_filename": "tram_T3a.svg"
+    },
+    {
+        "id": "A01757",
+        "name": "TRAM 3b",
+        "color": "#008b5a",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/39d54fc2c94b449e0465945c28663987",
+        "icon_filename": "tram_T3b.svg"
+    },
+    {
+        "id": "A01761",
+        "name": "TRAM 4",
+        "color": "#edad3a",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/7906e64f9ef97531ad26719b8713713e",
+        "icon_filename": "tram_T4.svg"
+    },
+    {
+        "id": "A01760",
+        "name": "TRAM 5",
+        "color": "#6e2c87",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/b80fe7750c20d7588ef571595791b3a3",
+        "icon_filename": "tram_T5.svg"
+    },
+    {
+        "id": "A02149",
+        "name": "TRAM 6",
+        "color": "#ff0000",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/7e2c2678c2250f7f2e96088e2529d697",
+        "icon_filename": "tram_T6.svg"
+    },
+    {
+        "id": "A02134",
+        "name": "TRAM 7",
+        "color": "#976238",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/60158a0802e6af6fdd9f1071fa876cf0",
+        "icon_filename": "tram_T7.svg"
+    },
+    {
+        "id": "A02150",
+        "name": "TRAM 8",
+        "color": "#9e9640",
+        "icon_url": "https://data.iledefrance-mobilites.fr/api/explore/v2.1/catalog/datasets/emplacement-des-gares-idf/files/b865807abbd35de8ec5a834f5886d3de",
+        "icon_filename": "tram_T8.svg"
+    },
+    {
+        "id": "A02371",
+        "name": "TRAM 9",
+        "color": "#ffffff",
+        "icon_url": null,
+        "icon_filename": null
+    }
+]

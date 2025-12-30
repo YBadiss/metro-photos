@@ -47,7 +47,7 @@ npm run preview
 
 ## Data
 
-The app loads metro station data from `public/data/zones_metro.json`. This file is copied from `../../data/generated_data_files/zones_metro.json`.
+The app loads metro station data from `public/data/zones_metro.json`. This file is copied from `../../data/generated/zones_metro.json`.
 
 To update the data:
 
@@ -59,7 +59,7 @@ To update the data:
 
 2. Copy the new file:
    ```bash
-   cp ../../data/generated_data_files/zones_metro.json public/data/
+   cp ../../data/generated/zones_metro.json public/data/
    ```
 
 ## Project Structure

@@ -15,7 +15,7 @@ The data pipeline transforms IDFM source files into a unified dataset that links
 
 ### Data Flow
 
-Source data (`data/source_data_files/`) → Transform script (`data/main.py`) → Generated data (`data/generated_data_files/`)
+Source data (`data/source/`) → Transform script (`data/main.py`) → Generated data (`data/generated/`)
 
 The transformation process:
 1. Parses 4 source JSON files from IDFM APIs
@@ -101,7 +101,7 @@ The app will be available at `http://localhost:5173`
 When the data pipeline generates new data, copy it to the front-end:
 
 ```bash
-cp data/generated_data_files/zones_metro.json app/front/public/data/
+cp data/generated/zones_metro.json app/front/public/data/
 ```
 
 ### Map Features

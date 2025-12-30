@@ -20,7 +20,12 @@ class Access(BaseModel):
 class Line(BaseModel):
     id: str
     name: str
+    color: str = "#ffffff"
     icon_url: str | None
+    icon_filename: str | None
+
+    def __hash__(self) -> int:
+        return self.id.__hash__()
 
 
 class Zone(BaseModel):
@@ -53,6 +58,10 @@ class ZoneLineRelationship(BaseModel):
     line_icon_url: str | None = Field(
         default=None,
         validation_alias=AliasChoices(AliasPath("picto", "url"), "line_icon_url"),
+    )
+    line_icon_filename: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices(AliasPath("picto", "filename"), "line_icon_filename"),
     )
     mode: str
 
