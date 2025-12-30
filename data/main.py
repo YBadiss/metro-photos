@@ -6,53 +6,53 @@ from pydantic import TypeAdapter
 
 
 def clean_transformations():
-    for p in Path("data/generated").glob("*.json"):
+    for p in Path("generated_data_files/").glob("*.json"):
         p.unlink()
 
 
 def transform_zones():
     ta = TypeAdapter(list[Zone])
-    with open("data/source/zones-d-arrets.json", "r") as f:
+    with open("source_data_files/zones-d-arrets.json", "r") as f:
         zones = ta.validate_json(f.read())
-    with open("data/generated/zones.json", "w") as f:
+    with open("generated_data_files/zones.json", "w") as f:
         f.write(ta.dump_json(zones, indent=4).decode())
 
 
 def tranform_access():
     ta = TypeAdapter(list[Access])
-    with open("data/source/acces.json", "r") as f:
+    with open("source_data_files/acces.json", "r") as f:
         accesses = ta.validate_json(f.read())
-    with open("data/generated/accesses.json", "w") as f:
+    with open("generated_data_files/accesses.json", "w") as f:
         f.write(ta.dump_json(accesses, indent=4).decode())
 
 
 def transform_zone_access_relationships():
     ta = TypeAdapter(list[ZoneAccessRelationship])
-    with open("data/source/relations-acces.json", "r") as f:
+    with open("source_data_files/relations-acces.json", "r") as f:
         accesses_relationships = ta.validate_json(f.read())
-    with open("data/generated/zones_accesses_rel.json", "w") as f:
+    with open("generated_data_files/zones_accesses_rel.json", "w") as f:
         f.write(ta.dump_json(accesses_relationships, indent=4).decode())
 
 
 def transform_zone_line_relationships():
     ta = TypeAdapter(list[ZoneLineRelationship])
-    with open("data/source/emplacement-des-gares-idf.json", "r") as f:
+    with open("source_data_files/emplacement-des-gares-idf.json", "r") as f:
         line_relationships = ta.validate_json(f.read())
-    with open("data/generated/zones_lines_rel.json", "w") as f:
+    with open("generated_data_files/zones_lines_rel.json", "w") as f:
         f.write(ta.dump_json(line_relationships, indent=4).decode())
 
 
 def combine_data():
-    with open("data/generated/accesses.json", "r") as f:
+    with open("generated_data_files/accesses.json", "r") as f:
         ta = TypeAdapter(list[Access])
         accesses = ta.validate_json(f.read())
-    with open("data/generated/zones.json", "r") as f:
+    with open("generated_data_files/zones.json", "r") as f:
         ta = TypeAdapter(list[Zone])
         zones = ta.validate_json(f.read())
-    with open("data/generated/zones_accesses_rel.json", "r") as f:
+    with open("generated_data_files/zones_accesses_rel.json", "r") as f:
         ta = TypeAdapter(list[ZoneAccessRelationship])
         accesses_relationships = ta.validate_json(f.read())
-    with open("data/generated/zones_lines_rel.json", "r") as f:
+    with open("generated_data_files/zones_lines_rel.json", "r") as f:
         ta = TypeAdapter(list[ZoneLineRelationship])
         lines_relationships = ta.validate_json(f.read())
     
@@ -79,7 +79,7 @@ def combine_data():
         zone_metro.accesses = accesses_by_zone[zone_metro.id]
         zone_metro.lines = lines_by_zone[zone_metro.id]
 
-    with open("data/generated/zones_metro.json", "w") as f:
+    with open("generated_data_files/zones_metro.json", "w") as f:
         ta = TypeAdapter(list[Zone])
         f.write(ta.dump_json(zones_metro, indent=4).decode())
 
