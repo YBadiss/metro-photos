@@ -1,0 +1,16 @@
+server {
+    server_name metro-boulot.photos www.metro-boulot.photos;
+
+    # Set default root for the server
+    root /var/www/metro-boulot.photos;
+    index index.html;
+
+    # Location block for root (home page) - override root
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Logging
+    access_log /var/log/nginx/metro-boulot.photos.access.log;
+    error_log /var/log/nginx/metro-boulot.photos.error.log;
+}
