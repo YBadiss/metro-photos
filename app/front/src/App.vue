@@ -1,10 +1,11 @@
-<script setup>
-import { ref, onMounted } from 'vue'
+<script setup lang="ts">
+import { ref, onMounted, type Ref } from 'vue'
 import MetroMap from './components/MetroMap.vue'
+import type { Zone } from './types/metro'
 
-const zones = ref([])
+const zones: Ref<Zone[]> = ref([])
 const loading = ref(true)
-const error = ref(null)
+const error: Ref<string | null> = ref(null)
 
 onMounted(async () => {
   try {
@@ -17,7 +18,7 @@ onMounted(async () => {
     }
     zones.value = await response.json()
   } catch (e) {
-    error.value = e.message
+    error.value = e instanceof Error ? e.message : 'Unknown error occurred'
     console.error('Error loading metro data:', e)
   } finally {
     loading.value = false
@@ -30,12 +31,8 @@ onMounted(async () => {
     <header class="header">
       <h1>Metro, Boulot, Photos!</h1>
     </header>
-    <div v-if="loading" class="loading">
-      Loading metro data...
-    </div>
-    <div v-else-if="error" class="error">
-      Error: {{ error }}
-    </div>
+    <div v-if="loading" class="loading">Loading metro data...</div>
+    <div v-else-if="error" class="error">Error: {{ error }}</div>
     <div v-else class="map-wrapper">
       <MetroMap :zones="zones" />
     </div>
@@ -50,7 +47,8 @@ onMounted(async () => {
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   background-color: #f5f5f5;
 }
 
