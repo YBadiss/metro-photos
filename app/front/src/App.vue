@@ -27,13 +27,18 @@ onMounted(async () => {
 
 <template>
   <div class="app">
+    <header class="header">
+      <h1>Metro, Boulot, Photos!</h1>
+    </header>
     <div v-if="loading" class="loading">
       Loading metro data...
     </div>
     <div v-else-if="error" class="error">
       Error: {{ error }}
     </div>
-    <MetroMap v-else :zones="zones" />
+    <div v-else class="map-wrapper">
+      <MetroMap :zones="zones" />
+    </div>
   </div>
 </template>
 
@@ -46,11 +51,37 @@ onMounted(async () => {
 
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background-color: #f5f5f5;
 }
 
 .app {
   width: 100%;
   height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  gap: 20px;
+}
+
+.header {
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.header h1 {
+  font-size: 48px;
+  font-weight: 700;
+  color: #333;
+  margin: 0;
+  letter-spacing: -0.5px;
+}
+
+.map-wrapper {
+  flex: 1;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
 }
 
 .loading,
@@ -58,7 +89,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  flex: 1;
   font-size: 18px;
 }
 
