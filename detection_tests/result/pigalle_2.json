@@ -1,0 +1,21 @@
+{
+  "source_image": "pigalle_2",
+  "detector": "retinaface",
+  "det_size": 1280,
+  "boxes": [
+    {
+      "x": 837,
+      "y": 2318,
+      "width": 36,
+      "height": 45,
+      "confidence": 0.6971670389175415
+    },
+    {
+      "x": 1018,
+      "y": 2308,
+      "width": 30,
+      "height": 39,
+      "confidence": 0.5546884536743164
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+[project]
+name = "detection-tests"
+version = "0.1.0"
+description = "Face detection testing and evaluation"
+requires-python = ">=3.11"
+dependencies = [
+    "opencv-python>=4.8.0",
+    "numpy>=1.24.0",
+    "insightface>=0.7.3",
+    "onnxruntime>=1.16.0",
+]
+
+[tool.uv]
+dev-dependencies = []

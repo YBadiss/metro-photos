@@ -1,0 +1,6 @@
+{
+  "source_image": "pigalle",
+  "detector": "retinaface",
+  "det_size": 1280,
+  "boxes": []
+}

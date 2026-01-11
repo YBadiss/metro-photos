@@ -1,0 +1,35 @@
+{
+  "source_image": "abbesses",
+  "detector": "retinaface",
+  "det_size": 1280,
+  "boxes": [
+    {
+      "x": 766,
+      "y": 2653,
+      "width": 111,
+      "height": 135,
+      "confidence": 0.8127503395080566
+    },
+    {
+      "x": 1342,
+      "y": 3036,
+      "width": 49,
+      "height": 66,
+      "confidence": 0.7654229402542114
+    },
+    {
+      "x": 1498,
+      "y": 3035,
+      "width": 49,
+      "height": 69,
+      "confidence": 0.674519956111908
+    },
+    {
+      "x": 1221,
+      "y": 2958,
+      "width": 48,
+      "height": 62,
+      "confidence": 0.61917644739151
+    }
+  ]
+}

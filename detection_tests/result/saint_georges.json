@@ -1,0 +1,6 @@
+{
+  "source_image": "saint_georges",
+  "detector": "retinaface",
+  "det_size": 1280,
+  "boxes": []
+}

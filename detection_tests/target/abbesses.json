@@ -1,0 +1,29 @@
+{
+  "source_image": "abbesses",
+  "boxes": [
+    {
+      "x": 1338,
+      "y": 3027,
+      "width": 62,
+      "height": 83
+    },
+    {
+      "x": 1494,
+      "y": 3026,
+      "width": 63,
+      "height": 92
+    },
+    {
+      "x": 1210,
+      "y": 2950,
+      "width": 67,
+      "height": 81
+    },
+    {
+      "x": 744,
+      "y": 2646,
+      "width": 153,
+      "height": 160
+    }
+  ]
+}

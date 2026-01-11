@@ -1,0 +1,35 @@
+{
+  "source_image": "chausse_d_antin_3",
+  "boxes": [
+    {
+      "x": 1392,
+      "y": 2638,
+      "width": 96,
+      "height": 152
+    },
+    {
+      "x": 1901,
+      "y": 2239,
+      "width": 53,
+      "height": 61
+    },
+    {
+      "x": 2079,
+      "y": 2203,
+      "width": 55,
+      "height": 62
+    },
+    {
+      "x": 238,
+      "y": 2192,
+      "width": 68,
+      "height": 83
+    },
+    {
+      "x": 87,
+      "y": 2119,
+      "width": 88,
+      "height": 128
+    }
+  ]
+}

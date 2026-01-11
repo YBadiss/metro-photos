@@ -1,0 +1,56 @@
+{
+  "source_image": "chausse_d_antin",
+  "detector": "retinaface",
+  "det_size": 1280,
+  "boxes": [
+    {
+      "x": 2761,
+      "y": 2294,
+      "width": 111,
+      "height": 134,
+      "confidence": 0.8461449146270752
+    },
+    {
+      "x": 397,
+      "y": 2316,
+      "width": 174,
+      "height": 204,
+      "confidence": 0.8438884019851685
+    },
+    {
+      "x": 240,
+      "y": 2353,
+      "width": 118,
+      "height": 156,
+      "confidence": 0.7847772240638733
+    },
+    {
+      "x": 1088,
+      "y": 2319,
+      "width": 56,
+      "height": 73,
+      "confidence": 0.7659668922424316
+    },
+    {
+      "x": 2173,
+      "y": 2287,
+      "width": 31,
+      "height": 38,
+      "confidence": 0.6678915619850159
+    },
+    {
+      "x": 2665,
+      "y": 2284,
+      "width": 72,
+      "height": 87,
+      "confidence": 0.6501079797744751
+    },
+    {
+      "x": 1239,
+      "y": 2334,
+      "width": 34,
+      "height": 46,
+      "confidence": 0.5142814517021179
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "source_image": "pigalle_2",
+  "boxes": [
+    {
+      "x": 1006,
+      "y": 2302,
+      "width": 59,
+      "height": 59
+    },
+    {
+      "x": 822,
+      "y": 2302,
+      "width": 74,
+      "height": 82
+    },
+    {
+      "x": 652,
+      "y": 2256,
+      "width": 70,
+      "height": 80
+    }
+  ]
+}
