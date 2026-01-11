@@ -13,7 +13,10 @@ app.use(cors());
 app.use(express.json());
 
 // Load zones_metro.json from data folder
-const dataPath = join(__dirname, "../data/zones_metro.json");
+// Use process.cwd() because:
+// - Local: tsx runs from app/back/, data is at ./data/
+// - Prod: pm2 runs from deploy dir, data is at ./data/
+const dataPath = join(process.cwd(), "data/zones_metro.json");
 const zonesMetro = JSON.parse(readFileSync(dataPath, "utf-8"));
 
 app.get("/zones_metro", (_req, res) => {
