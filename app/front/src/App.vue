@@ -11,6 +11,7 @@ const zones: Ref<Zone[]> = ref([])
 const loading = ref(true)
 const error: Ref<string | null> = ref(null)
 const isInfoModalOpen = ref(false)
+const metroMapRef = ref<InstanceType<typeof MetroMap> | null>(null)
 
 // API base URL from environment
 const API_URL = import.meta.env.VITE_API_URL || ''
@@ -29,6 +30,12 @@ onMounted(async () => {
     loading.value = false
   }
 })
+
+function onTabChange(value: string | number) {
+  if (value === 'map') {
+    metroMapRef.value?.invalidateSize()
+  }
+}
 </script>
 
 <template>
@@ -40,7 +47,7 @@ onMounted(async () => {
       </button>
     </header>
 
-    <Tabs default-value="map" class="flex-1 flex flex-col min-h-0">
+    <Tabs default-value="map" class="flex-1 flex flex-col min-h-0" @update:model-value="onTabChange">
       <TabsList class="self-center">
         <TabsTrigger value="map" class="gap-2">
           <Map class="w-4 h-4" />
@@ -56,7 +63,7 @@ onMounted(async () => {
         <div v-if="loading" class="loading">Loading metro data...</div>
         <div v-else-if="error" class="error">Error: {{ error }}</div>
         <div v-else class="map-wrapper flex-1">
-          <MetroMap :zones="zones" />
+          <MetroMap ref="metroMapRef" :zones="zones" />
         </div>
       </TabsContent>
 

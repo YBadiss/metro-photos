@@ -22,6 +22,9 @@ export default [
         DragEvent: 'readonly',
         Event: 'readonly',
         XMLHttpRequest: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
+        ResizeObserver: 'readonly',
       },
       parserOptions: {
         parser: typescriptParser,

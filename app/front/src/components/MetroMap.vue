@@ -3,7 +3,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, type Ref } from 'vue'
+import { ref, onMounted, onUnmounted, watch, type Ref } from 'vue'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
 import { lambert93ToWGS84 } from '../utils/coordinates'
@@ -27,6 +27,25 @@ const mapContainer: Ref<HTMLElement | null> = ref(null)
 const minZoom = 12
 const maxZoom = 19
 let map: L.Map | null = null
+let resizeObserver: ResizeObserver | null = null
+
+// Expose method to fix map size after tab switch
+function invalidateSize(): void {
+  if (map) {
+    // Multiple attempts with increasing delays to ensure tiles load
+    setTimeout(() => map?.invalidateSize(), 0)
+    setTimeout(() => map?.invalidateSize(), 100)
+    setTimeout(() => map?.invalidateSize(), 300)
+  }
+}
+
+defineExpose({ invalidateSize })
+
+onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect()
+  }
+})
 let markersLayer: L.LayerGroup | null = null
 let selectedAccess: Access | null = null
 let selectedZone: Zone | null = null
@@ -61,6 +80,12 @@ onMounted(() => {
 
   // Click anywhere on the map to reset selection
   map.on('click', resetSelection)
+
+  // Watch for container resize (handles tab switching)
+  resizeObserver = new ResizeObserver(() => {
+    map?.invalidateSize()
+  })
+  resizeObserver.observe(mapContainer.value)
 })
 
 // Watch for changes in zones data
