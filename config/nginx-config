@@ -53,10 +53,11 @@ server {
     error_log /var/log/nginx/api.metro-boulot.photos.error.log;
 
     listen 443 ssl;
-    ssl_certificate /etc/letsencrypt/live/metro-boulot.photos/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/metro-boulot.photos/privkey.pem;
+    ssl_certificate /etc/letsencrypt/live/api.metro-boulot.photos/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/api.metro-boulot.photos/privkey.pem; # managed by Certbot
     include /etc/letsencrypt/options-ssl-nginx.conf;
     ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem;
+
 }
 
 server {
@@ -67,4 +68,6 @@ server {
     server_name api.metro-boulot.photos;
     listen 80;
     return 404;
+
+
 }
