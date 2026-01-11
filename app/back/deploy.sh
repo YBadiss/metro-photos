@@ -18,6 +18,12 @@ scp $SSH_OPTIONS package.json package-lock.json root@167.71.143.97:${DEPLOY_DIR}
 
 # Copy production env file
 if [ -f .env.production ]; then
+    echo "Copying production env file..."
+    # If S3_SECRET_ACCESS_KEY is in the shell env, then use it to update .env.production
+    if [ -n "$S3_SECRET_ACCESS_KEY" ]; then
+        echo "S3_SECRET_ACCESS_KEY found in shell env, updating .env.production..."
+        sed -i "s/S3_SECRET_ACCESS_KEY=.*/S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY/" .env.production
+    fi
     scp $SSH_OPTIONS .env.production root@167.71.143.97:${DEPLOY_DIR}-${timestamp}/.env
 fi
 

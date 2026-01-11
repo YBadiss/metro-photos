@@ -17,6 +17,11 @@ export default [
         console: 'readonly',
         fetch: 'readonly',
         HTMLElement: 'readonly',
+        HTMLInputElement: 'readonly',
+        File: 'readonly',
+        DragEvent: 'readonly',
+        Event: 'readonly',
+        XMLHttpRequest: 'readonly',
       },
       parserOptions: {
         parser: typescriptParser,

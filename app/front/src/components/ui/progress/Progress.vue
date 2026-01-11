@@ -5,10 +5,12 @@ import { computed, type HTMLAttributes } from 'vue'
 
 const props = withDefaults(defineProps<ProgressRootProps & { class?: HTMLAttributes['class'] }>(), {
   modelValue: 0,
+  class: undefined,
 })
 
 const delegatedProps = computed(() => {
-  const { class: _, ...delegated } = props
+  const { class: _className, ...delegated } = props
+  void _className
   return delegated
 })
 </script>

@@ -6,7 +6,8 @@ import { computed, type HTMLAttributes } from 'vue'
 const props = defineProps<TabsContentProps & { class?: HTMLAttributes['class'] }>()
 
 const delegatedProps = computed(() => {
-  const { class: _, ...delegated } = props
+  const { class: _className, ...delegated } = props
+  void _className
   return delegated
 })
 </script>

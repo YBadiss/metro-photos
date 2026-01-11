@@ -35,6 +35,8 @@ jobs:
           ssh-keyscan -H 167.71.143.97 >> ~/.ssh/known_hosts
           
       - name: Deploy metro-boulot.photos Back
+        env:
+          S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
         run: |
           cd app/back
           npm ci
