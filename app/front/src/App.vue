@@ -9,12 +9,12 @@ const loading = ref(true)
 const error: Ref<string | null> = ref(null)
 const isInfoModalOpen = ref(false)
 
+// API base URL from environment
+const API_URL = import.meta.env.VITE_API_URL || ''
+
 onMounted(async () => {
   try {
-    // Load the zones_metro.json file
-    // In development, this will be served from the public folder
-    // For production, you can adjust the path as needed
-    const response = await fetch('/data/zones_metro.json')
+    const response = await fetch(`${API_URL}/zones_metro`)
     if (!response.ok) {
       throw new Error(`Failed to load data: ${response.statusText}`)
     }

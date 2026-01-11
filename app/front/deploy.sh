@@ -2,8 +2,8 @@
 
 SSH_OPTIONS="$@"
 
-# Build the project
-npm run build
+# Set production API URL and build
+VITE_API_URL=https://api.metro-boulot.photos npm run build
 
 timestamp=$(date +%s)
 
