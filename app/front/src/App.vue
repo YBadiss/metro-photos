@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, type Ref } from 'vue'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import MetroMap from './components/MetroMap.vue'
+import PhotoUpload from './components/PhotoUpload.vue'
 import InfoModal from './components/InfoModal.vue'
+import { Map, Upload } from 'lucide-vue-next'
 import type { Zone } from './types/metro'
 
 const zones: Ref<Zone[]> = ref([])
@@ -36,36 +39,46 @@ onMounted(async () => {
         ?
       </button>
     </header>
-    <div v-if="loading" class="loading">Loading metro data...</div>
-    <div v-else-if="error" class="error">Error: {{ error }}</div>
-    <div v-else class="map-wrapper">
-      <MetroMap :zones="zones" />
-    </div>
+
+    <Tabs default-value="map" class="flex-1 flex flex-col min-h-0">
+      <TabsList class="self-center">
+        <TabsTrigger value="map" class="gap-2">
+          <Map class="w-4 h-4" />
+          Map
+        </TabsTrigger>
+        <TabsTrigger value="upload" class="gap-2">
+          <Upload class="w-4 h-4" />
+          Upload
+        </TabsTrigger>
+      </TabsList>
+
+      <TabsContent value="map" class="flex-1 min-h-0 h-full data-[state=active]:flex data-[state=active]:flex-col">
+        <div v-if="loading" class="loading">Loading metro data...</div>
+        <div v-else-if="error" class="error">Error: {{ error }}</div>
+        <div v-else class="map-wrapper flex-1">
+          <MetroMap :zones="zones" />
+        </div>
+      </TabsContent>
+
+      <TabsContent value="upload" class="flex-1 min-h-0 h-full data-[state=active]:flex data-[state=active]:flex-col">
+        <div class="upload-wrapper flex-1">
+          <PhotoUpload />
+        </div>
+      </TabsContent>
+    </Tabs>
 
     <InfoModal :is-open="isInfoModalOpen" @close="isInfoModalOpen = false" />
   </div>
 </template>
 
-<style>
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-body {
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  background-color: #f5f5f5;
-}
-
+<style scoped>
 .app {
   width: 100%;
   height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 20px;
-  gap: 20px;
+  padding: 1.25rem;
+  gap: 1.25rem;
 }
 
 .header {
@@ -75,11 +88,10 @@ body {
 }
 
 .header h1 {
-  font-size: 48px;
+  font-size: 3rem;
   font-weight: 700;
-  color: #333;
-  margin: 0;
-  letter-spacing: -0.5px;
+  color: hsl(var(--foreground));
+  letter-spacing: -0.025em;
 }
 
 .info-button {
@@ -87,35 +99,44 @@ body {
   top: 50%;
   right: 0;
   transform: translateY(-50%);
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: white;
-  border: 2px solid #ddd;
-  color: #666;
-  font-size: 24px;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 9999px;
+  background: hsl(var(--background));
+  border: 2px solid hsl(var(--border));
+  color: hsl(var(--muted-foreground));
+  font-size: 1.5rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .info-button:hover {
-  background: #333;
-  color: white;
-  border-color: #333;
+  background: hsl(var(--foreground));
+  color: hsl(var(--background));
+  border-color: hsl(var(--foreground));
   transform: translateY(-50%) scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .map-wrapper {
-  flex: 1;
-  background: white;
-  border-radius: 12px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  height: 100%;
+  background: hsl(var(--card));
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.upload-wrapper {
+  height: 100%;
+  background: hsl(var(--card));
+  border-radius: 0.75rem;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  padding: 1.5rem;
   overflow: hidden;
 }
 
@@ -124,11 +145,11 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  flex: 1;
-  font-size: 18px;
+  height: 100%;
+  font-size: 1.125rem;
 }
 
 .error {
-  color: #d32f2f;
+  color: hsl(var(--destructive));
 }
 </style>
