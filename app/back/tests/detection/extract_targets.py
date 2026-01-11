@@ -42,22 +42,54 @@ def extract_cyan_rectangles(image_path: str) -> list[dict]:
     upper_cyan = np.array([100, 255, 255])
     cyan_mask = cv2.inRange(hsv, lower_cyan, upper_cyan)
     
-    # Clean up the mask
-    kernel = np.ones((3, 3), np.uint8)
-    cyan_mask = cv2.morphologyEx(cyan_mask, cv2.MORPH_CLOSE, kernel)
-    cyan_mask = cv2.morphologyEx(cyan_mask, cv2.MORPH_OPEN, kernel)
+    # Clean up noise
+    kernel_small = np.ones((3, 3), np.uint8)
+    cyan_mask = cv2.morphologyEx(cyan_mask, cv2.MORPH_OPEN, kernel_small)
     
-    # Find contours
-    contours, _ = cv2.findContours(cyan_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    # Fill in the rectangle outlines using flood fill approach:
+    # 1. Find contours of the cyan pixels
+    # 2. For each contour, if it looks like a rectangle outline, fill it
+    contours, hierarchy = cv2.findContours(cyan_mask, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
     
-    bounding_boxes = []
+    # Create a filled mask
+    filled_mask = cyan_mask.copy()
     
-    for contour in contours:
+    for i, contour in enumerate(contours):
         # Get bounding rectangle
         x, y, w, h = cv2.boundingRect(contour)
         
-        # Filter out very small contours (noise)
-        if w < 10 or h < 10:
+        # Skip tiny contours
+        if w < 20 or h < 20:
+            continue
+        
+        # Check if this looks like a rectangle outline (hollow)
+        # by checking if the contour area is much smaller than the bounding rect area
+        contour_area = cv2.contourArea(contour)
+        rect_area = w * h
+        
+        # If contour area is small relative to bounding rect, it's likely a hollow rectangle
+        # Fill it in
+        if contour_area < rect_area * 0.5:
+            cv2.rectangle(filled_mask, (x, y), (x + w, y + h), 255, -1)
+    
+    # Find contours of the filled shapes
+    final_contours, _ = cv2.findContours(filled_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    bounding_boxes = []
+    for contour in final_contours:
+        x, y, w, h = cv2.boundingRect(contour)
+        
+        # Filter out small contours (noise)
+        if w < 30 or h < 30:
+            continue
+        
+        # Skip very thin boxes (aspect ratio check)
+        aspect_ratio = max(w, h) / min(w, h) if min(w, h) > 0 else float('inf')
+        if aspect_ratio > 3.0:
+            continue
+        
+        # Skip very small boxes
+        if w * h < 2000:
             continue
         
         bounding_boxes.append({
@@ -67,80 +99,7 @@ def extract_cyan_rectangles(image_path: str) -> list[dict]:
             "height": int(h)
         })
     
-    # Merge overlapping/adjacent boxes (for rectangles detected as separate lines)
-    merged_boxes = merge_nearby_boxes(bounding_boxes, threshold=20)
-    
-    # Filter boxes to keep only face-like shapes (roughly square, not too thin)
-    filtered_boxes = []
-    for box in merged_boxes:
-        w, h = box["width"], box["height"]
-        
-        # Skip very thin boxes (aspect ratio check)
-        aspect_ratio = max(w, h) / min(w, h) if min(w, h) > 0 else float('inf')
-        if aspect_ratio > 3.0:
-            continue
-        
-        # Skip very small boxes (minimum area for face-sized rectangles)
-        if w * h < 2000:
-            continue
-            
-        filtered_boxes.append(box)
-    
-    return filtered_boxes
-
-
-def merge_nearby_boxes(boxes: list[dict], threshold: int = 20) -> list[dict]:
-    """
-    Merge bounding boxes that are close to each other.
-    
-    This handles cases where a rectangle's sides are detected as separate contours.
-    """
-    if not boxes:
-        return []
-    
-    # Convert to a format easier to work with
-    rects = [(b["x"], b["y"], b["x"] + b["width"], b["y"] + b["height"]) for b in boxes]
-    
-    merged = True
-    while merged:
-        merged = False
-        new_rects = []
-        used = set()
-        
-        for i, r1 in enumerate(rects):
-            if i in used:
-                continue
-                
-            x1_min, y1_min, x1_max, y1_max = r1
-            
-            for j, r2 in enumerate(rects):
-                if j <= i or j in used:
-                    continue
-                
-                x2_min, y2_min, x2_max, y2_max = r2
-                
-                # Check if boxes are close enough to merge
-                # Either overlapping or within threshold distance
-                if (x1_min - threshold <= x2_max and x2_min - threshold <= x1_max and
-                    y1_min - threshold <= y2_max and y2_min - threshold <= y1_max):
-                    # Merge the boxes
-                    x1_min = min(x1_min, x2_min)
-                    y1_min = min(y1_min, y2_min)
-                    x1_max = max(x1_max, x2_max)
-                    y1_max = max(y1_max, y2_max)
-                    used.add(j)
-                    merged = True
-            
-            new_rects.append((x1_min, y1_min, x1_max, y1_max))
-            used.add(i)
-        
-        rects = new_rects
-    
-    # Convert back to dict format
-    return [
-        {"x": int(r[0]), "y": int(r[1]), "width": int(r[2] - r[0]), "height": int(r[3] - r[1])}
-        for r in rects
-    ]
+    return bounding_boxes
 
 
 def process_image(image_path: Path) -> int:

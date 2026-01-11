@@ -1,7 +1,7 @@
 [project]
-name = "detection-tests"
+name = "metro-photos-back"
 version = "0.1.0"
-description = "Face detection testing and evaluation"
+description = "Metro photos backend - face detection and processing"
 requires-python = ">=3.11"
 dependencies = [
     "opencv-python>=4.8.0",
