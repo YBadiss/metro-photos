@@ -16,8 +16,8 @@ import cv2
 
 # Add scripts directory to path for importing detect_faces
 SCRIPT_DIR = Path(__file__).parent
-BACK_DIR = SCRIPT_DIR.parent.parent
-sys.path.insert(0, str(BACK_DIR / "scripts"))
+SCRIPTS_DIR = SCRIPT_DIR.parent.parent  # scripts/
+sys.path.insert(0, str(SCRIPTS_DIR))
 
 from detect_faces import detect_faces  # noqa: E402
 
@@ -31,27 +31,29 @@ def create_visualization(
     source_image_path: Path,
     detected_boxes: list[dict],
     ground_truth_boxes: list[dict],
-    output_path: Path
+    output_path: Path,
 ):
     """Create visualization with both detected and ground truth boxes."""
     img = cv2.imread(str(source_image_path))
     if img is None:
         print(f"  Warning: Could not load image for visualization: {source_image_path}")
         return
-    
+
     # Draw ground truth boxes first (cyan, underneath)
     for gt_box in ground_truth_boxes:
         x, y, w, h = gt_box["x"], gt_box["y"], gt_box["width"], gt_box["height"]
         cv2.rectangle(img, (x, y), (x + w, y + h), (255, 255, 0), 3)  # Cyan (BGR)
-    
+
     # Draw detection boxes on top (green)
     for box in detected_boxes:
         x, y, w, h = box["x"], box["y"], box["width"], box["height"]
         conf = box.get("confidence", 0)
         cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)  # Green
         label = f"{conf:.2f}"
-        cv2.putText(img, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2)
-    
+        cv2.putText(
+            img, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2
+        )
+
     cv2.imwrite(str(output_path), img)
 
 
@@ -60,32 +62,32 @@ def process_image(
     target_dir: Path,
     result_dir: Path,
     det_size: tuple[int, int],
-    visualize: bool
+    visualize: bool,
 ) -> tuple[int, int]:
     """
     Process a single image.
-    
+
     Returns:
         Tuple of (detected_count, ground_truth_count)
     """
     print(f"\nProcessing: {source_path.name}")
-    
+
     # Run detection
     boxes = detect_faces(str(source_path), det_size=det_size)
     print(f"  Detected: {len(boxes)} faces")
-    
+
     # Save detection JSON
     result = {
         "source_image": source_path.stem,
         "detector": "retinaface",
         "det_size": det_size[0],
-        "boxes": boxes
+        "boxes": boxes,
     }
-    
+
     json_path = result_dir / f"{source_path.stem}.json"
     with open(json_path, "w") as f:
         json.dump(result, f, indent=2)
-    
+
     # Load ground truth
     gt_boxes = []
     gt_json_path = target_dir / f"{source_path.stem}.json"
@@ -96,13 +98,13 @@ def process_image(
         print(f"  Ground truth: {len(gt_boxes)} faces")
     else:
         print("  Ground truth: not found")
-    
+
     # Create visualization
     if visualize:
         vis_path = result_dir / f"{source_path.stem}.jpeg"
         create_visualization(source_path, boxes, gt_boxes, vis_path)
         print(f"  Visualization: {vis_path.name}")
-    
+
     return len(boxes), len(gt_boxes)
 
 
@@ -113,46 +115,46 @@ def main():
     parser.add_argument(
         "image",
         nargs="?",
-        help="Process a specific image (optional, processes all if not specified)"
+        help="Process a specific image (optional, processes all if not specified)",
     )
     parser.add_argument(
         "--source-dir",
         type=Path,
         default=SOURCE_DIR,
-        help=f"Directory containing source images (default: {SOURCE_DIR})"
+        help=f"Directory containing source images (default: {SOURCE_DIR})",
     )
     parser.add_argument(
         "--target-dir",
         type=Path,
         default=TARGET_DIR,
-        help=f"Directory containing ground truth JSON (default: {TARGET_DIR})"
+        help=f"Directory containing ground truth JSON (default: {TARGET_DIR})",
     )
     parser.add_argument(
         "--result-dir",
         type=Path,
         default=RESULT_DIR,
-        help=f"Directory for output results (default: {RESULT_DIR})"
+        help=f"Directory for output results (default: {RESULT_DIR})",
     )
     parser.add_argument(
         "--visualize",
         action="store_true",
-        help="Generate visualizations with detected (green) and ground truth (cyan) boxes"
+        help="Generate visualizations with detected (green) and ground truth (cyan) boxes",
     )
     parser.add_argument(
         "--det-size",
         type=int,
         default=1280,
-        help="Detection input size (default: 1280)"
+        help="Detection input size (default: 1280)",
     )
-    
+
     args = parser.parse_args()
-    
+
     det_size = (args.det_size, args.det_size)
     result_dir = args.result_dir
     result_dir.mkdir(exist_ok=True)
-    
+
     print(f"Detection size: {det_size}")
-    
+
     if args.image:
         # Process single image
         image_path = Path(args.image)
@@ -166,27 +168,32 @@ def main():
         if not source_dir.exists():
             print(f"Error: Source directory not found: {source_dir}")
             return 1
-        
+
         image_extensions = {".jpg", ".jpeg", ".png"}
-        images = [f for f in source_dir.iterdir() 
-                  if f.is_file() and f.suffix.lower() in image_extensions]
-        
+        images = [
+            f
+            for f in source_dir.iterdir()
+            if f.is_file() and f.suffix.lower() in image_extensions
+        ]
+
         if not images:
             print(f"No images found in {source_dir}")
             return 1
-        
+
         print(f"Processing {len(images)} images from {source_dir}")
-        
+
         total_detected = 0
         total_gt = 0
         for image_path in sorted(images):
-            detected, gt = process_image(image_path, args.target_dir, result_dir, det_size, args.visualize)
+            detected, gt = process_image(
+                image_path, args.target_dir, result_dir, det_size, args.visualize
+            )
             total_detected += detected
             total_gt += gt
-        
+
         print(f"\n{'='*50}")
         print(f"Total: {total_detected} faces detected, {total_gt} ground truth")
-    
+
     return 0
 
 

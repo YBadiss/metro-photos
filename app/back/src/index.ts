@@ -3,7 +3,9 @@ import cors from "cors";
 import express from "express";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { generateUploadUrl } from "./s3";
+import { generateUploadUrl, generateDownloadUrl } from "./s3";
+import { tasks, runs } from "@trigger.dev/sdk/v3";
+import type { detectFacesTask } from "./trigger/detectFaces";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -44,6 +46,47 @@ app.post("/upload-url", async (req, res) => {
   } catch (error) {
     console.error("Error generating upload URL:", error);
     res.status(500).json({ error: "Failed to generate upload URL" });
+  }
+});
+
+// Trigger face detection on an image stored in S3
+app.post("/detect_faces", async (req, res) => {
+  try {
+    const { imageKey, detSize } = req.body;
+
+    if (!imageKey) {
+      res.status(400).json({ error: "imageKey is required" });
+      return;
+    }
+
+    console.log("Triggering face detection for S3 key:", imageKey);
+
+    // Generate a presigned URL for the image
+    const imageUrl = await generateDownloadUrl(imageKey);
+
+    // Trigger the task
+    const handle = await tasks.trigger<typeof detectFacesTask>(
+      "detect-faces",
+      { imageUrl, detSize }
+    );
+
+    console.log("Task triggered with ID:", handle.id);
+
+    // Poll for the task to complete
+    const run = await runs.poll(handle, { pollIntervalMs: 1000 });
+
+    if (run.status !== "COMPLETED") {
+      console.error("Face detection task failed:", run.error);
+      res.status(500).json({ error: "Face detection failed", details: run.error });
+      return;
+    }
+
+    console.log("Face detection result:", JSON.stringify(run.output, null, 2));
+
+    res.json(run.output);
+  } catch (error) {
+    console.error("Error triggering face detection:", error);
+    res.status(500).json({ error: "Failed to trigger face detection" });
   }
 });
 
