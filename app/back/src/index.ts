@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 
 // Load zones_metro.json from data folder
-const dataPath = join(__dirname, "../data/zones_metro.json");
+const dataPath = join(__dirname, "data/zones_metro.json");
 const zonesMetro = JSON.parse(readFileSync(dataPath, "utf-8"));
 
 app.get("/zones_metro", (_req, res) => {
