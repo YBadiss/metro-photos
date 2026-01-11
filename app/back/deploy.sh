@@ -16,6 +16,11 @@ scp $SSH_OPTIONS -r dist/* root@167.71.143.97:${DEPLOY_DIR}-${timestamp}/
 scp $SSH_OPTIONS -r data root@167.71.143.97:${DEPLOY_DIR}-${timestamp}/
 scp $SSH_OPTIONS package.json package-lock.json root@167.71.143.97:${DEPLOY_DIR}-${timestamp}/
 
+# Copy production env file
+if [ -f .env.production ]; then
+    scp $SSH_OPTIONS .env.production root@167.71.143.97:${DEPLOY_DIR}-${timestamp}/.env
+fi
+
 # Install production dependencies and update symlink
 ssh $SSH_OPTIONS root@167.71.143.97 "cd ${DEPLOY_DIR}-${timestamp} && npm ci --production"
 
