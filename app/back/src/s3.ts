@@ -60,6 +60,23 @@ export async function generateUploadUrl(request: UploadUrlRequest): Promise<Uplo
   };
 }
 
+export async function generateUploadUrlForKey(
+  key: string,
+  contentType: string,
+): Promise<{ uploadUrl: string; key: string }> {
+  const command = new PutObjectCommand({
+    Bucket: BUCKET_NAME,
+    Key: key,
+    ContentType: contentType,
+  });
+
+  const uploadUrl = await getSignedUrl(s3Client, command, {
+    expiresIn: SIGNED_URL_EXPIRY,
+  });
+
+  return { uploadUrl, key };
+}
+
 export async function generateDownloadUrl(key: string): Promise<string> {
   const command = new GetObjectCommand({
     Bucket: BUCKET_NAME,

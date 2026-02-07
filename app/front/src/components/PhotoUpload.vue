@@ -1,25 +1,39 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Progress } from '@/components/ui/progress'
-import { Upload, CheckCircle, XCircle, Image, X } from 'lucide-vue-next'
+import { Upload, XCircle, Image, X } from 'lucide-vue-next'
 
 const API_URL = import.meta.env.VITE_API_URL || ''
+
+interface ProcessingResult {
+  blurredUrl: string
+  blurredKey: string
+  facesCount: number
+}
 
 interface FileUpload {
   id: string
   file: File
-  status: 'pending' | 'uploading' | 'success' | 'error'
+  status: 'pending' | 'uploading' | 'processing' | 'processed' | 'error'
   progress: number
   error?: string
   key?: string
+  result?: ProcessingResult
 }
 
 const uploads = ref<FileUpload[]>([])
 const isDragOver = ref(false)
 
 const pendingCount = computed(() => uploads.value.filter((u) => u.status === 'pending').length)
-const uploadingCount = computed(() => uploads.value.filter((u) => u.status === 'uploading').length)
-const successCount = computed(() => uploads.value.filter((u) => u.status === 'success').length)
+const uploadingCount = computed(
+  () => uploads.value.filter((u) => u.status === 'uploading').length,
+)
+const processingCount = computed(
+  () => uploads.value.filter((u) => u.status === 'processing').length,
+)
+const processedCount = computed(
+  () => uploads.value.filter((u) => u.status === 'processed').length,
+)
 const errorCount = computed(() => uploads.value.filter((u) => u.status === 'error').length)
 
 function generateId(): string {
@@ -74,7 +88,7 @@ function removeUpload(id: string) {
 }
 
 function clearCompleted() {
-  uploads.value = uploads.value.filter((u) => u.status !== 'success' && u.status !== 'error')
+  uploads.value = uploads.value.filter((u) => u.status !== 'processed' && u.status !== 'error')
 }
 
 async function processQueue() {
@@ -104,16 +118,41 @@ async function processQueue() {
 
     // Step 2: Upload to S3 with progress tracking
     await uploadWithProgress(pending, uploadUrl)
-
-    pending.status = 'success'
     pending.progress = 100
+
+    // Step 3: Fire off face processing in parallel (don't await)
+    pending.status = 'processing'
+    processPhoto(pending).catch((err) => {
+      pending.status = 'error'
+      pending.error = err instanceof Error ? err.message : 'Processing failed'
+    })
   } catch (err) {
     pending.status = 'error'
     pending.error = err instanceof Error ? err.message : 'Upload failed'
   }
 
-  // Process next in queue
+  // Immediately process next upload
   processQueue()
+}
+
+async function processPhoto(upload: FileUpload) {
+  const response = await fetch(`${API_URL}/process-photo`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageKey: upload.key }),
+  })
+
+  if (!response.ok) {
+    throw new Error('Face processing failed')
+  }
+
+  const data = await response.json()
+  upload.result = {
+    blurredUrl: data.blurredUrl,
+    blurredKey: data.blurredKey,
+    facesCount: data.facesCount,
+  }
+  upload.status = 'processed'
 }
 
 function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
@@ -122,7 +161,6 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
 
     xhr.upload.addEventListener('progress', (e) => {
       if (e.lengthComputable) {
-        // Map 10-95% to upload progress (0% reserved for getting URL, 100% for completion)
         upload.progress = 10 + Math.round((e.loaded / e.total) * 85)
       }
     })
@@ -144,18 +182,14 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
   })
 }
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return bytes + ' B'
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
-}
 </script>
 
 <template>
   <div class="flex flex-col gap-6 h-full">
-    <!-- Dropzone -->
+    <!-- Dropzone: only shown when no uploads -->
     <div
-      class="border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer"
+      v-if="uploads.length === 0"
+      class="border-2 border-dashed rounded-xl p-12 text-center transition-all cursor-pointer flex-1 flex items-center justify-center"
       :class="
         isDragOver
           ? 'border-primary bg-primary/5 scale-[1.01]'
@@ -185,88 +219,124 @@ function formatSize(bytes: number): string {
       </div>
     </div>
 
-    <!-- Upload Summary -->
-    <div v-if="uploads.length > 0" class="flex items-center justify-between">
-      <div class="flex gap-4 text-sm">
-        <span v-if="pendingCount" class="text-muted-foreground">{{ pendingCount }} pending</span>
-        <span v-if="uploadingCount" class="text-primary font-medium"
-          >{{ uploadingCount }} uploading</span
-        >
-        <span v-if="successCount" class="text-green-600">{{ successCount }} completed</span>
-        <span v-if="errorCount" class="text-destructive">{{ errorCount }} failed</span>
-      </div>
-      <button
-        v-if="successCount > 0 || errorCount > 0"
-        class="text-sm text-muted-foreground hover:text-foreground transition-colors"
-        @click="clearCompleted"
-      >
-        Clear completed
-      </button>
-    </div>
-
-    <!-- Upload List -->
-    <div v-if="uploads.length > 0" class="flex-1 overflow-auto space-y-3">
-      <div
-        v-for="upload in uploads"
-        :key="upload.id"
-        class="flex items-center gap-4 p-4 bg-card rounded-lg border shadow-sm"
-      >
-        <!-- Thumbnail / Icon -->
-        <div
-          class="w-12 h-12 rounded-lg bg-muted flex items-center justify-center overflow-hidden flex-shrink-0"
-        >
-          <Image class="w-6 h-6 text-muted-foreground" />
-        </div>
-
-        <!-- File Info -->
-        <div class="flex-1 min-w-0">
-          <p class="font-medium truncate">{{ upload.file.name }}</p>
-          <p class="text-sm text-muted-foreground">{{ formatSize(upload.file.size) }}</p>
-
-          <!-- Progress Bar -->
-          <div v-if="upload.status === 'uploading'" class="mt-2">
-            <Progress :model-value="upload.progress" class="h-2" />
-          </div>
-
-          <!-- Error Message -->
-          <p v-if="upload.status === 'error'" class="text-sm text-destructive mt-1">
-            {{ upload.error }}
-          </p>
-        </div>
-
-        <!-- Status Icon -->
-        <div class="flex-shrink-0">
-          <div
-            v-if="upload.status === 'pending'"
-            class="w-8 h-8 rounded-full bg-muted flex items-center justify-center"
+    <!-- Upload Summary + Grid -->
+    <template v-if="uploads.length > 0">
+      <!-- Summary bar -->
+      <div class="flex items-center justify-between flex-shrink-0">
+        <div class="flex gap-4 text-sm">
+          <span v-if="pendingCount" class="text-muted-foreground">{{ pendingCount }} pending</span>
+          <span v-if="uploadingCount" class="text-primary font-medium"
+            >{{ uploadingCount }} uploading</span
           >
-            <div class="w-2 h-2 rounded-full bg-muted-foreground" />
-          </div>
-          <div
-            v-else-if="upload.status === 'uploading'"
-            class="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"
+          <span v-if="processingCount" class="text-amber-600 font-medium"
+            >{{ processingCount }} processing</span
           >
-            <div
-              class="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"
-            />
-          </div>
-          <CheckCircle v-else-if="upload.status === 'success'" class="w-8 h-8 text-green-600" />
-          <XCircle v-else-if="upload.status === 'error'" class="w-8 h-8 text-destructive" />
+          <span v-if="processedCount" class="text-green-600">{{ processedCount }} completed</span>
+          <span v-if="errorCount" class="text-destructive">{{ errorCount }} failed</span>
         </div>
-
-        <!-- Remove Button -->
         <button
-          class="p-1 hover:bg-muted rounded transition-colors flex-shrink-0"
-          @click="removeUpload(upload.id)"
+          v-if="processedCount > 0 || errorCount > 0"
+          class="text-sm text-muted-foreground hover:text-foreground transition-colors"
+          @click="clearCompleted"
         >
-          <X class="w-5 h-5 text-muted-foreground" />
+          Clear completed
         </button>
       </div>
-    </div>
 
-    <!-- Empty State -->
-    <div v-else class="flex-1 flex items-center justify-center text-muted-foreground">
-      <p>No photos uploaded yet</p>
-    </div>
+      <!-- Unified grid for all uploads -->
+      <div
+        class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 flex-1 overflow-y-auto content-start"
+      >
+        <div
+          v-for="upload in uploads"
+          :key="upload.id"
+          class="relative rounded-lg overflow-hidden border shadow-sm bg-card aspect-square"
+        >
+          <!-- Processed: show blurred image -->
+          <template v-if="upload.status === 'processed'">
+            <img
+              :src="upload.result!.blurredUrl"
+              :alt="upload.file.name"
+              class="w-full h-full object-cover"
+            />
+            <div
+              class="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-xs px-2 py-1"
+            >
+              {{ upload.result!.facesCount }} face{{
+                upload.result!.facesCount !== 1 ? 's' : ''
+              }}
+              blurred
+            </div>
+          </template>
+
+          <!-- Pending / Uploading / Processing / Error: show placeholder -->
+          <template v-else>
+            <div class="w-full h-full flex flex-col items-center justify-center gap-3 p-4">
+              <!-- Status icon -->
+              <div
+                v-if="upload.status === 'pending'"
+                class="w-12 h-12 rounded-full bg-muted flex items-center justify-center"
+              >
+                <Image class="w-6 h-6 text-muted-foreground" />
+              </div>
+              <div
+                v-else-if="upload.status === 'uploading'"
+                class="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center"
+              >
+                <div
+                  class="w-6 h-6 border-2 border-primary border-t-transparent rounded-full animate-spin"
+                />
+              </div>
+              <div
+                v-else-if="upload.status === 'processing'"
+                class="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center"
+              >
+                <div
+                  class="w-6 h-6 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"
+                />
+              </div>
+              <div
+                v-else-if="upload.status === 'error'"
+                class="w-12 h-12 rounded-full bg-destructive/10 flex items-center justify-center"
+              >
+                <XCircle class="w-6 h-6 text-destructive" />
+              </div>
+
+              <!-- Filename -->
+              <p class="text-xs text-muted-foreground truncate w-full text-center">
+                {{ upload.file.name }}
+              </p>
+
+              <!-- Progress bar for uploading -->
+              <div v-if="upload.status === 'uploading'" class="w-full px-2">
+                <Progress :model-value="upload.progress" class="h-1.5" />
+              </div>
+
+              <!-- Status label -->
+              <p v-if="upload.status === 'pending'" class="text-xs text-muted-foreground">
+                Pending
+              </p>
+              <p v-else-if="upload.status === 'uploading'" class="text-xs text-primary">
+                Uploading {{ upload.progress }}%
+              </p>
+              <p v-else-if="upload.status === 'processing'" class="text-xs text-amber-600">
+                Blurring faces...
+              </p>
+              <p v-else-if="upload.status === 'error'" class="text-xs text-destructive truncate w-full text-center">
+                {{ upload.error }}
+              </p>
+            </div>
+
+            <!-- Remove button -->
+            <button
+              class="absolute top-1 right-1 p-1 rounded-full bg-black/40 hover:bg-black/60 transition-colors opacity-0 group-hover:opacity-100"
+              @click="removeUpload(upload.id)"
+            >
+              <X class="w-3.5 h-3.5 text-white" />
+            </button>
+          </template>
+        </div>
+      </div>
+    </template>
   </div>
 </template>

@@ -19,7 +19,7 @@ export default defineConfig({
   build: {
     extensions: [
       pythonExtension({
-        scripts: ["./scripts/detect_faces.py"],
+        scripts: ["./scripts/detect_faces.py", "./scripts/process_photo.py"],
         requirementsFile: "./requirements.txt",
         // Use uv's venv Python in dev mode
         devPythonBinaryPath: "./scripts/.venv/bin/python",

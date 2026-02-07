@@ -2,9 +2,10 @@ import "./env"; // Must be first to load env vars before other imports
 import express from "express";
 import { readFileSync } from "fs";
 import { join } from "path";
-import { generateUploadUrl, generateDownloadUrl } from "./s3";
+import { generateUploadUrl, generateUploadUrlForKey, generateDownloadUrl } from "./s3";
 import { tasks, runs } from "@trigger.dev/sdk";
 import type { detectFacesTask } from "./trigger/detectFaces";
+import type { processPhotoTask } from "./trigger/processPhoto";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -91,6 +92,67 @@ app.post("/detect_faces", async (req, res) => {
   } catch (error) {
     console.error("Error triggering face detection:", error);
     res.status(500).json({ error: "Failed to trigger face detection" });
+  }
+});
+
+// Process a photo: detect faces, blur them, upload result
+app.post("/process-photo", async (req, res) => {
+  try {
+    const { imageKey, detSize } = req.body;
+
+    if (!imageKey) {
+      res.status(400).json({ error: "imageKey is required" });
+      return;
+    }
+
+    console.log("Processing photo for S3 key:", imageKey);
+
+    // Generate download URL for the original image
+    const downloadUrl = await generateDownloadUrl(imageKey);
+
+    // Generate upload URL for the blurred result under processed/ prefix
+    const processedKey = imageKey.replace("uploads/", "processed/");
+    const { uploadUrl } = await generateUploadUrlForKey(processedKey, "image/jpeg");
+
+    // Trigger the combined detect + blur task
+    const handle = await tasks.trigger<typeof processPhotoTask>("process-photo", {
+      downloadUrl,
+      uploadUrl,
+      detSize,
+    });
+
+    console.log("Process-photo task triggered with ID:", handle.id);
+
+    // Poll for completion
+    const run = await runs.poll(handle, { pollIntervalMs: 1000 });
+
+    if (run.status !== "COMPLETED") {
+      console.error("Photo processing task failed:", run.error);
+      res.status(500).json({ error: "Photo processing failed", details: run.error });
+      return;
+    }
+
+    // Generate a download URL for the blurred image
+    const blurredUrl = await generateDownloadUrl(processedKey);
+
+    const output = run.output as {
+      faces_count: number;
+      boxes: unknown[];
+      blurred: boolean;
+    };
+
+    console.log("Photo processing result:", JSON.stringify(output, null, 2));
+
+    res.json({
+      blurredKey: processedKey,
+      blurredUrl,
+      facesCount: output.faces_count,
+      boxes: output.boxes,
+      blurred: output.blurred,
+    });
+  } catch (error) {
+    console.error("Error processing photo:", error);
+    res.status(500).json({ error: "Failed to process photo" });
   }
 });
 
