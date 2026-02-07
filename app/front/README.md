@@ -52,6 +52,7 @@ The app loads metro station data from `public/data/zones_metro.json`. This file 
 To update the data:
 
 1. Regenerate the data using the data pipeline:
+
    ```bash
    cd ../../data
    ./main.py

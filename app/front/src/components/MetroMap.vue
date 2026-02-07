@@ -3,297 +3,317 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, type Ref } from 'vue'
-import L from 'leaflet'
-import 'leaflet/dist/leaflet.css'
-import { lambert93ToWGS84 } from '../utils/coordinates'
-import type { Zone, Access } from '../types/metro'
+import { ref, onMounted, onUnmounted, watch, type Ref } from "vue";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
+import { lambert93ToWGS84 } from "../utils/coordinates";
+import type { Zone, Access } from "../types/metro";
 
 interface Props {
-  zones?: Zone[]
+  zones?: Zone[];
 }
 
 interface MarkerData {
-  marker: L.Marker
-  zone: Zone
-  access: Access
+  marker: L.Marker | null;
+  zone: Zone;
+  access: Access;
+  latLon: [number, number];
+  lineColors: string[];
+  lineNames: string;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   zones: () => [],
-})
+});
 
-const mapContainer: Ref<HTMLElement | null> = ref(null)
-const minZoom = 12
-const maxZoom = 19
-let map: L.Map | null = null
-let resizeObserver: ResizeObserver | null = null
+const mapContainer: Ref<HTMLElement | null> = ref(null);
+const minZoom = 12;
+const maxZoom = 19;
+let map: L.Map | null = null;
+let resizeObserver: ResizeObserver | null = null;
+let markersLayer: L.LayerGroup | null = null;
 
-// Expose method to fix map size after tab switch
-function invalidateSize(): void {
-  if (map) {
-    // Multiple attempts with increasing delays to ensure tiles load
-    setTimeout(() => map?.invalidateSize(), 0)
-    setTimeout(() => map?.invalidateSize(), 100)
-    setTimeout(() => map?.invalidateSize(), 300)
-  }
+// Selection state
+let selectedAccess: Access | null = null;
+let selectedZone: Zone | null = null;
+let pinpointMode = false;
+let openedTooltipMarker: L.Marker | null = null;
+
+// All entrance data (lightweight, markers created/destroyed on demand)
+let allMarkers: MarkerData[] = [];
+
+// --- Icon helpers ---
+
+function getMarkerSize(): number {
+  if (!map) return 12;
+  return (6 + (map.getZoom() - minZoom) * 2.5) * 2;
 }
 
-defineExpose({ invalidateSize })
-
-onUnmounted(() => {
-  if (resizeObserver) {
-    resizeObserver.disconnect()
-  }
-})
-let markersLayer: L.LayerGroup | null = null
-let selectedAccess: Access | null = null
-let selectedZone: Zone | null = null
-let allMarkers: MarkerData[] = [] // Store all markers with their metadata
-
-onMounted(() => {
-  if (!mapContainer.value) return
-
-  // Initialize the map centered on Paris with zoom constraints
-  map = L.map(mapContainer.value, {
-    minZoom,
-    maxZoom,
-  }).setView([48.8566, 2.3522], 12)
-
-  // Add MapTiler tiles
-  L.tileLayer('https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=PL2jHQqSB8xZ7Bp6aXpF', {
-    attribution:
-      '© <a href="https://www.maptiler.com/copyright/">MapTiler</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    maxZoom,
-  }).addTo(map)
-
-  // Create a layer group for markers
-  markersLayer = L.layerGroup().addTo(map)
-
-  // Load initial markers if zones are already available
-  if (props.zones.length > 0) {
-    updateMarkers()
-  }
-
-  // Update marker sizes when zoom level changes
-  map.on('zoomend', updateMarkers)
-
-  // Click anywhere on the map to reset selection
-  map.on('click', resetSelection)
-
-  // Watch for container resize (handles tab switching)
-  resizeObserver = new ResizeObserver(() => {
-    map?.invalidateSize()
-  })
-  resizeObserver.observe(mapContainer.value)
-})
-
-// Watch for changes in zones data
-watch(
-  () => props.zones,
-  () => {
-    updateMarkers()
-  }
-)
-
-function getRadiusForZoom(zoom: number): number {
-  return 6 + (zoom - minZoom) * 2.5
-}
-
-/**
- * Create a pie chart SVG icon for markers with multiple line colors
- * @param colors - Array of color strings for each line
- * @param size - Diameter of the circle in pixels
- * @param dimmed - Whether to dim the marker
- * @returns Leaflet div icon with SVG pie chart
- */
 function createPieChartIcon(colors: string[], size: number, dimmed = false): L.DivIcon {
-  const radius = size / 2
-  const center = size / 2
+  const radius = size / 2;
+  const center = size / 2;
 
   if (!colors || colors.length === 0) {
-    // Fallback to orange if no colors
-    colors = ['#ff7800']
+    colors = ["#ff7800"];
   }
 
-  let svgSegments = ''
-  const opacity = dimmed ? 0.2 : 1
+  let svgSegments = "";
+  const opacity = dimmed ? 0.2 : 1;
 
   if (colors.length === 1) {
-    // Single color - just a circle
-    svgSegments = `<circle cx="${center}" cy="${center}" r="${radius - 1}" fill="${colors[0]}" stroke="#000" stroke-width="1" opacity="${opacity}"/>`
+    svgSegments = `<circle cx="${center}" cy="${center}" r="${radius - 1}" fill="${colors[0]}" stroke="#000" stroke-width="1" opacity="${opacity}"/>`;
   } else {
-    // Multiple colors - create pie slices
-    const anglePerSegment = 360 / colors.length
+    const anglePerSegment = 360 / colors.length;
 
     colors.forEach((color, index) => {
-      const startAngle = index * anglePerSegment
-      const endAngle = (index + 1) * anglePerSegment
+      const startAngle = index * anglePerSegment;
+      const endAngle = (index + 1) * anglePerSegment;
+      const startRad = ((startAngle - 90) * Math.PI) / 180;
+      const endRad = ((endAngle - 90) * Math.PI) / 180;
+      const x1 = center + (radius - 1) * Math.cos(startRad);
+      const y1 = center + (radius - 1) * Math.sin(startRad);
+      const x2 = center + (radius - 1) * Math.cos(endRad);
+      const y2 = center + (radius - 1) * Math.sin(endRad);
+      const largeArcFlag = anglePerSegment > 180 ? 1 : 0;
+      const pathData = `M ${center},${center} L ${x1},${y1} A ${radius - 1},${radius - 1} 0 ${largeArcFlag},1 ${x2},${y2} Z`;
+      svgSegments += `<path d="${pathData}" fill="${color}" stroke="#000" stroke-width="0.5" opacity="${opacity}"/>`;
+    });
 
-      // Convert angles to radians
-      const startRad = ((startAngle - 90) * Math.PI) / 180
-      const endRad = ((endAngle - 90) * Math.PI) / 180
-
-      // Calculate arc points
-      const x1 = center + (radius - 1) * Math.cos(startRad)
-      const y1 = center + (radius - 1) * Math.sin(startRad)
-      const x2 = center + (radius - 1) * Math.cos(endRad)
-      const y2 = center + (radius - 1) * Math.sin(endRad)
-
-      // Create path for pie slice
-      const largeArcFlag = anglePerSegment > 180 ? 1 : 0
-      const pathData = `M ${center},${center} L ${x1},${y1} A ${radius - 1},${radius - 1} 0 ${largeArcFlag},1 ${x2},${y2} Z`
-
-      svgSegments += `<path d="${pathData}" fill="${color}" stroke="#000" stroke-width="0.5" opacity="${opacity}"/>`
-    })
-
-    // Add border circle
-    svgSegments += `<circle cx="${center}" cy="${center}" r="${radius - 1}" fill="none" stroke="#000" stroke-width="1" opacity="${opacity}"/>`
+    svgSegments += `<circle cx="${center}" cy="${center}" r="${radius - 1}" fill="none" stroke="#000" stroke-width="1" opacity="${opacity}"/>`;
   }
 
-  const svg = `
-    <svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
-      ${svgSegments}
-    </svg>
-  `
+  const svg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">${svgSegments}</svg>`;
 
   return L.divIcon({
     html: svg,
-    className: 'pie-chart-marker',
+    className: "pie-chart-marker",
     iconSize: [size, size],
     iconAnchor: [size / 2, size / 2],
-  })
+  });
 }
 
-/**
- * Check if two accesses share any metro lines
- */
-function shareLines(zone1: Zone, zone2: Zone): boolean {
-  const lines1 = zone1.lines.map((l) => l.id)
-  const lines2 = zone2.lines.map((l) => l.id)
-  return lines1.some((id) => lines2.includes(id))
+// --- Selection logic ---
+
+function isDimmed(md: MarkerData): boolean {
+  if (!selectedAccess || !selectedZone) return false;
+
+  if (pinpointMode) {
+    return md.access.id !== selectedAccess.id;
+  }
+
+  // Line-sharing mode: highlight if same access or shares lines
+  if (md.access.id === selectedAccess.id) return false;
+  const selectedLineIds = selectedZone.lines.map((l) => l.id);
+  return !md.zone.lines.some((l) => selectedLineIds.includes(l.id));
 }
 
-/**
- * Reset selection and show all markers normally
- */
+function applyIcons(): void {
+  if (!markersLayer) return;
+  const size = getMarkerSize();
+  for (const md of allMarkers) {
+    if (md.marker && markersLayer.hasLayer(md.marker)) {
+      md.marker.setIcon(createPieChartIcon(md.lineColors, size, isDimmed(md)));
+    }
+  }
+}
+
+function closeOpenedTooltip(): void {
+  if (openedTooltipMarker) {
+    openedTooltipMarker.closeTooltip();
+    openedTooltipMarker = null;
+  }
+}
+
+function selectEntrance(access: Access, zone: Zone, pinpoint: boolean): void {
+  closeOpenedTooltip();
+  selectedAccess = access;
+  selectedZone = zone;
+  pinpointMode = pinpoint;
+  applyIcons();
+}
+
 function resetSelection(): void {
-  if (selectedAccess === null) return
-
-  selectedAccess = null
-  selectedZone = null
-
-  if (!map) return
-
-  const currentZoom = map.getZoom()
-  const radius = getRadiusForZoom(currentZoom)
-  const markerSize = radius * 2
-
-  allMarkers.forEach(({ marker, zone }) => {
-    const lineColors = zone.lines.map((line) => line.color).filter((color) => color) as string[]
-    const icon = createPieChartIcon(lineColors, markerSize, false)
-    marker.setIcon(icon)
-  })
+  if (!selectedAccess) return;
+  closeOpenedTooltip();
+  selectedAccess = null;
+  selectedZone = null;
+  pinpointMode = false;
+  applyIcons();
 }
 
-/**
- * Handle marker click - highlight related accesses
- */
-function onMarkerClick(clickedMarkerData: MarkerData, event: L.LeafletMouseEvent): void {
-  // Prevent the map click event from firing
-  L.DomEvent.stopPropagation(event)
+// --- On-demand marker creation/destruction ---
 
-  const { zone: clickedZone, access: clickedAccess } = clickedMarkerData
+function createMarkerForData(md: MarkerData, size: number): L.Marker {
+  const icon = createPieChartIcon(md.lineColors, size, isDimmed(md));
+  const marker = L.marker(md.latLon, { icon });
 
-  // If clicking the same access again, reset
-  if (selectedAccess && selectedAccess.id === clickedAccess.id) {
-    resetSelection()
-    return
+  const tooltipContent = `
+    <div class="metro-tooltip">
+      <strong>${md.zone.name}</strong><br>
+      ${md.access.name}<br>
+      <span style="font-size: 11px; color: #666;">${md.lineNames || "N/A"}</span>
+    </div>
+  `;
+  marker.bindTooltip(tooltipContent, {
+    direction: "top",
+    offset: [0, -size / 4],
+    className: "custom-tooltip",
+  });
+
+  marker.on("click", (e) => {
+    L.DomEvent.stopPropagation(e);
+    if (selectedAccess?.id === md.access.id) {
+      resetSelection();
+    } else {
+      selectEntrance(md.access, md.zone, false);
+    }
+  });
+
+  md.marker = marker;
+  return marker;
+}
+
+function destroyMarkerForData(md: MarkerData): void {
+  if (!md.marker) return;
+  if (openedTooltipMarker === md.marker) {
+    openedTooltipMarker = null;
   }
-  onMarkerSelect(clickedAccess, clickedZone)
+  md.marker.off("click");
+  md.marker.unbindTooltip();
+  if (markersLayer) {
+    markersLayer.removeLayer(md.marker);
+  }
+  md.marker = null;
 }
 
-function onMarkerSelect(access: Access, zone: Zone): void {
-  selectedAccess = access
-  selectedZone = zone
+// --- Viewport-based marker lifecycle ---
 
-  if (!map) return
+function updateVisibleMarkers(): void {
+  if (!map || !markersLayer) return;
 
-  // Update all markers
-  const currentZoom = map.getZoom()
-  const radius = getRadiusForZoom(currentZoom)
-  const markerSize = radius * 2
+  const bounds = map.getBounds();
+  const size = getMarkerSize();
 
-  allMarkers.forEach(({ marker, zone: markerZone, access: markerAccess }) => {
-    const lineColors = markerZone.lines
-      .map((line) => line.color)
-      .filter((color) => color) as string[]
-
-    // Check if this access shares lines with the clicked one
-    const isRelated = shareLines(markerZone, zone) || markerAccess.id === access.id
-
-    // Update icon with dimming
-    const icon = createPieChartIcon(lineColors, markerSize, !isRelated)
-    marker.setIcon(icon)
-  })
+  for (const md of allMarkers) {
+    const visible = bounds.contains(md.latLon);
+    if (visible && !md.marker) {
+      const marker = createMarkerForData(md, size);
+      markersLayer.addLayer(marker);
+    } else if (!visible && md.marker) {
+      destroyMarkerForData(md);
+    }
+  }
 }
 
-function updateMarkers(): void {
-  if (!markersLayer || !map) return
+// --- Build entrance data (only when zones data changes) ---
 
-  // Clear existing markers
-  markersLayer.clearLayers()
-  allMarkers = []
+function buildMarkers(): void {
+  if (!markersLayer) return;
 
-  const currentZoom = map.getZoom()
-  const radius = getRadiusForZoom(currentZoom)
-  const markerSize = radius * 2
+  // Destroy all existing markers
+  for (const md of allMarkers) {
+    destroyMarkerForData(md);
+  }
+  markersLayer.clearLayers();
+  allMarkers = [];
 
-  // Add markers for each zone and its accesses
   props.zones.forEach((zone) => {
-    // Get colors from the zone's lines
-    const lineColors = zone.lines.map((line) => line.color).filter((color) => color) as string[]
+    const lineColors = zone.lines.map((line) => line.color).filter((c) => c) as string[];
+    const lineNames = zone.lines.map((line) => line.name).join(", ");
 
-    // Add markers for each access point
     zone.accesses.forEach((access) => {
-      const [lat, lon] = lambert93ToWGS84(access.x_lambert_93, access.y_lambert_93)
+      const latLon: [number, number] = lambert93ToWGS84(access.x_lambert_93, access.y_lambert_93);
+      allMarkers.push({ marker: null, zone, access, latLon, lineColors, lineNames });
+    });
+  });
 
-      // Create a marker with pie chart icon
-      const icon = createPieChartIcon(lineColors, markerSize)
-      const marker = L.marker([lat, lon], { icon })
+  updateVisibleMarkers();
+}
 
-      // Create tooltip for hover
-      const lines = zone.lines.map((line) => line.name).join(', ')
-      const tooltipContent = `
-        <div class="metro-tooltip">
-          <strong>${zone.name}</strong><br>
-          ${access.name}<br>
-          <span style="font-size: 11px; color: #666;">${lines || 'N/A'}</span>
-        </div>
-      `
-      marker.bindTooltip(tooltipContent, {
-        direction: 'top',
-        offset: [0, -radius],
-        className: 'custom-tooltip',
-      })
+// --- Zoom handler (resize icons only, no marker recreation) ---
 
-      // Store marker data for click interactions
-      const markerData = { marker, zone, access }
-      allMarkers.push(markerData)
+function onZoomEnd(): void {
+  applyIcons();
+  updateVisibleMarkers();
+}
 
-      // Add click handler
-      marker.on('click', (e) => onMarkerClick(markerData, e))
+// --- Public API ---
 
-      if (markersLayer) {
-        markersLayer.addLayer(marker)
-      }
-    })
-  })
-
-  if (selectedAccess && selectedZone) {
-    onMarkerSelect(selectedAccess, selectedZone)
+function invalidateSize(): void {
+  if (map) {
+    setTimeout(() => map?.invalidateSize(), 0);
+    setTimeout(() => map?.invalidateSize(), 100);
+    setTimeout(() => map?.invalidateSize(), 300);
   }
 }
+
+function flyToEntrance(accessId: string): void {
+  if (!map || !markersLayer) return;
+
+  const found = allMarkers.find((m) => m.access.id === accessId);
+  if (!found) return;
+
+  // Create marker if it doesn't exist yet (out of viewport)
+  const size = getMarkerSize();
+  if (!found.marker) {
+    createMarkerForData(found, size);
+  }
+  if (!markersLayer.hasLayer(found.marker!)) {
+    markersLayer.addLayer(found.marker!);
+  }
+
+  map.flyTo(found.latLon, 18);
+  selectEntrance(found.access, found.zone, true);
+  found.marker!.openTooltip();
+  openedTooltipMarker = found.marker;
+}
+
+defineExpose({ invalidateSize, flyToEntrance });
+
+// --- Lifecycle ---
+
+onMounted(() => {
+  if (!mapContainer.value) return;
+
+  map = L.map(mapContainer.value, {
+    minZoom,
+    maxZoom,
+  }).setView([48.8566, 2.3522], 12);
+
+  L.tileLayer("https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=PL2jHQqSB8xZ7Bp6aXpF", {
+    attribution:
+      '© <a href="https://www.maptiler.com/copyright/">MapTiler</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    maxZoom,
+  }).addTo(map);
+
+  markersLayer = L.layerGroup().addTo(map);
+
+  if (props.zones.length > 0) {
+    buildMarkers();
+  }
+
+  map.on("zoomend", onZoomEnd);
+  map.on("moveend", updateVisibleMarkers);
+  map.on("click", resetSelection);
+
+  resizeObserver = new ResizeObserver(() => {
+    map?.invalidateSize();
+  });
+  resizeObserver.observe(mapContainer.value);
+});
+
+onUnmounted(() => {
+  if (resizeObserver) {
+    resizeObserver.disconnect();
+  }
+});
+
+watch(
+  () => props.zones,
+  () => {
+    buildMarkers();
+  },
+);
 </script>
 
 <style scoped>

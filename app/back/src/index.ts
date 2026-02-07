@@ -5,7 +5,78 @@ import { join } from "path";
 import { generateUploadUrl, generateUploadUrlForKey, generateDownloadUrl } from "./s3";
 import { tasks, runs } from "@trigger.dev/sdk";
 import type { detectFacesTask } from "./trigger/detectFaces";
-import type { processPhotoTask } from "./trigger/processPhoto";
+import type { processPhotoTask, ProcessPhotoResult } from "./trigger/processPhoto";
+
+// Metro data types (matching front/src/types/metro.ts)
+interface GeoPoint {
+  lat: number;
+  lon: number;
+}
+interface Access {
+  id: string;
+  name: string;
+  short_name: number | null;
+  geo_point: GeoPoint;
+}
+interface Line {
+  id: string;
+  name: string;
+  icon_url: string | null;
+  color?: string;
+}
+interface Zone {
+  id: string;
+  name: string;
+  town: string;
+  accesses: Access[];
+  lines: Line[];
+}
+
+interface MatchedEntrance {
+  entrance: { id: string; name: string; short_name: number | null };
+  station: { id: string; name: string; town: string };
+  lines: Line[];
+  distanceMeters: number;
+}
+
+function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+const MAX_MATCH_DISTANCE_METERS = 500;
+
+function findNearestEntrance(lat: number, lon: number, zones: Zone[]): MatchedEntrance | null {
+  let best: MatchedEntrance | null = null;
+  let bestDistance = Infinity;
+
+  for (const zone of zones) {
+    for (const access of zone.accesses) {
+      const d = haversineMeters(lat, lon, access.geo_point.lat, access.geo_point.lon);
+      if (d < bestDistance) {
+        bestDistance = d;
+        best = {
+          entrance: { id: access.id, name: access.name, short_name: access.short_name },
+          station: { id: zone.id, name: zone.name, town: zone.town },
+          lines: zone.lines,
+          distanceMeters: Math.round(d),
+        };
+      }
+    }
+  }
+
+  if (best && best.distanceMeters > MAX_MATCH_DISTANCE_METERS) {
+    return null;
+  }
+
+  return best;
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -24,7 +95,7 @@ app.use(express.json());
 // - Local: bun runs from app/back/, data is at ./data/
 // - Prod: pm2 runs from deploy dir, data is at ./data/
 const dataPath = join(process.cwd(), "data/zones_metro.json");
-const zonesMetro = JSON.parse(readFileSync(dataPath, "utf-8"));
+const zonesMetro: Zone[] = JSON.parse(readFileSync(dataPath, "utf-8"));
 
 app.get("/zones_metro", (_req, res) => {
   res.json(zonesMetro);
@@ -135,20 +206,27 @@ app.post("/process-photo", async (req, res) => {
     // Generate a download URL for the blurred image
     const blurredUrl = await generateDownloadUrl(processedKey);
 
-    const output = run.output as {
-      faces_count: number;
-      boxes: unknown[];
-      blurred: boolean;
-    };
+    const output = run.output as ProcessPhotoResult;
 
     console.log("Photo processing result:", JSON.stringify(output, null, 2));
+
+    // Match GPS coordinates to nearest metro entrance
+    let matchedEntrance: MatchedEntrance | null = null;
+    if (output.exif?.latitude != null && output.exif?.longitude != null) {
+      matchedEntrance = findNearestEntrance(
+        output.exif.latitude,
+        output.exif.longitude,
+        zonesMetro,
+      );
+    }
 
     res.json({
       blurredKey: processedKey,
       blurredUrl,
       facesCount: output.faces_count,
-      boxes: output.boxes,
       blurred: output.blurred,
+      exif: output.exif,
+      matchedEntrance,
     });
   } catch (error) {
     console.error("Error processing photo:", error);

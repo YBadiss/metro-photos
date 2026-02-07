@@ -85,18 +85,18 @@
 
 <script setup lang="ts">
 interface Props {
-  isOpen: boolean
+  isOpen: boolean;
 }
 
 interface Emits {
-  (e: 'close'): void
+  (e: "close"): void;
 }
 
-defineProps<Props>()
-const emit = defineEmits<Emits>()
+defineProps<Props>();
+const emit = defineEmits<Emits>();
 
 function close() {
-  emit('close')
+  emit("close");
 }
 </script>
 
@@ -188,7 +188,7 @@ h2 {
 }
 
 .modal-body ul li::before {
-  content: '→';
+  content: "→";
   position: absolute;
   left: 0;
   color: #333;

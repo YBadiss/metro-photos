@@ -1,18 +1,18 @@
 <script setup lang="ts">
-import { cn } from '@/lib/utils'
-import { ProgressIndicator, ProgressRoot, type ProgressRootProps } from 'radix-vue'
-import { computed, type HTMLAttributes } from 'vue'
+import { cn } from "@/lib/utils";
+import { ProgressIndicator, ProgressRoot, type ProgressRootProps } from "radix-vue";
+import { computed, type HTMLAttributes } from "vue";
 
-const props = withDefaults(defineProps<ProgressRootProps & { class?: HTMLAttributes['class'] }>(), {
+const props = withDefaults(defineProps<ProgressRootProps & { class?: HTMLAttributes["class"] }>(), {
   modelValue: 0,
   class: undefined,
-})
+});
 
 const delegatedProps = computed(() => {
-  const { class: _className, ...delegated } = props
-  void _className
-  return delegated
-})
+  const { class: _className, ...delegated } = props;
+  void _className;
+  return delegated;
+});
 </script>
 
 <template>

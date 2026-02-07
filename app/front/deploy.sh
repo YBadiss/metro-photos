@@ -3,7 +3,7 @@
 SSH_OPTIONS="$@"
 
 # Set production API URL and build
-VITE_API_URL=https://api.metro-boulot.photos npm run build
+VITE_API_URL=https://api.metro-boulot.photos bun run build
 
 timestamp=$(date +%s)
 

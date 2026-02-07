@@ -15,10 +15,18 @@ interface BoundingBox {
   confidence: number;
 }
 
+export interface ExifData {
+  latitude?: number;
+  longitude?: number;
+  dateTime?: string;
+  camera?: string;
+}
+
 export interface ProcessPhotoResult {
   faces_count: number;
   boxes: BoundingBox[];
   blurred: boolean;
+  exif: ExifData;
 }
 
 export const processPhotoTask = task({
