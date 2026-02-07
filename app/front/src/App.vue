@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, type Ref } from "vue";
+import { ref, onMounted, watch, type Ref } from "vue";
 import MetroMap from "./components/MetroMap.vue";
 import PhotoUpload from "./components/PhotoUpload.vue";
 import InfoModal from "./components/InfoModal.vue";
@@ -51,6 +51,10 @@ function handleFlyTo(accessId: string) {
 function closeSidebar() {
   showSidebar.value = false;
 }
+
+watch(showSidebar, () => {
+  metroMapRef.value?.invalidateSize();
+});
 </script>
 
 <template>

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SSH_OPTIONS="$@"
+SSH_OPTIONS=("$@")
 
 # Set production API URL and build
 VITE_API_URL=https://api.metro-boulot.photos bun run build
@@ -8,10 +8,13 @@ VITE_API_URL=https://api.metro-boulot.photos bun run build
 timestamp=$(date +%s)
 
 # Create target directory with proper permissions
-ssh $SSH_OPTIONS root@167.71.143.97 "mkdir -p /var/www/metro-boulot.photos-${timestamp} && chmod 755 /var/www/metro-boulot.photos-${timestamp}"
+ssh "${SSH_OPTIONS[@]}" root@167.71.143.97 "mkdir -p /var/www/metro-boulot.photos-${timestamp} && chmod 755 /var/www/metro-boulot.photos-${timestamp}"
 
 # Deploy the built static files
-scp $SSH_OPTIONS -r dist/* root@167.71.143.97:/var/www/metro-boulot.photos-${timestamp}/
+scp "${SSH_OPTIONS[@]}" -r dist/* root@167.71.143.97:/var/www/metro-boulot.photos-${timestamp}/
 
 # Create a new symlink (remove old one if exists)
-ssh $SSH_OPTIONS root@167.71.143.97 "rm -f /var/www/metro-boulot.photos && ln -s /var/www/metro-boulot.photos-${timestamp} /var/www/metro-boulot.photos"
+ssh "${SSH_OPTIONS[@]}" root@167.71.143.97 "rm -f /var/www/metro-boulot.photos && ln -s /var/www/metro-boulot.photos-${timestamp} /var/www/metro-boulot.photos"
+
+# Clean up old deployments, keep the 3 most recent
+ssh "${SSH_OPTIONS[@]}" root@167.71.143.97 'ls -dt /var/www/metro-boulot.photos-* | tail -n +4 | xargs rm -rf --'

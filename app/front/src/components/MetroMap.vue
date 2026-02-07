@@ -6,8 +6,9 @@
 import { ref, onMounted, onUnmounted, watch, type Ref } from "vue";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { lambert93ToWGS84 } from "../utils/coordinates";
 import type { Zone, Access } from "../types/metro";
+
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_KEY || "PL2jHQqSB8xZ7Bp6aXpF";
 
 interface Props {
   zones?: Zone[];
@@ -41,6 +42,12 @@ let openedTooltipMarker: L.Marker | null = null;
 
 // All entrance data (lightweight, markers created/destroyed on demand)
 let allMarkers: MarkerData[] = [];
+
+// Protect a marker from being destroyed by updateVisibleMarkers during flyTo animation
+let protectedAccessId: string | null = null;
+
+// RAF guard for updateVisibleMarkers
+let pendingVisibilityUpdate = false;
 
 // --- Icon helpers ---
 
@@ -188,7 +195,7 @@ function destroyMarkerForData(md: MarkerData): void {
 
 // --- Viewport-based marker lifecycle ---
 
-function updateVisibleMarkers(): void {
+function syncVisibleMarkers(): void {
   if (!map || !markersLayer) return;
 
   const bounds = map.getBounds();
@@ -199,10 +206,19 @@ function updateVisibleMarkers(): void {
     if (visible && !md.marker) {
       const marker = createMarkerForData(md, size);
       markersLayer.addLayer(marker);
-    } else if (!visible && md.marker) {
+    } else if (!visible && md.marker && md.access.id !== protectedAccessId) {
       destroyMarkerForData(md);
     }
   }
+}
+
+function updateVisibleMarkers(): void {
+  if (pendingVisibilityUpdate) return;
+  pendingVisibilityUpdate = true;
+  requestAnimationFrame(() => {
+    pendingVisibilityUpdate = false;
+    syncVisibleMarkers();
+  });
 }
 
 // --- Build entrance data (only when zones data changes) ---
@@ -222,12 +238,12 @@ function buildMarkers(): void {
     const lineNames = zone.lines.map((line) => line.name).join(", ");
 
     zone.accesses.forEach((access) => {
-      const latLon: [number, number] = lambert93ToWGS84(access.x_lambert_93, access.y_lambert_93);
+      const latLon: [number, number] = [access.geo_point.lat, access.geo_point.lon];
       allMarkers.push({ marker: null, zone, access, latLon, lineColors, lineNames });
     });
   });
 
-  updateVisibleMarkers();
+  syncVisibleMarkers();
 }
 
 // --- Zoom handler (resize icons only, no marker recreation) ---
@@ -262,6 +278,12 @@ function flyToEntrance(accessId: string): void {
     markersLayer.addLayer(found.marker!);
   }
 
+  // Protect the target marker from being destroyed during fly animation
+  protectedAccessId = accessId;
+  map.once("moveend", () => {
+    protectedAccessId = null;
+  });
+
   map.flyTo(found.latLon, 18);
   selectEntrance(found.access, found.zone, true);
   found.marker!.openTooltip();
@@ -280,7 +302,7 @@ onMounted(() => {
     maxZoom,
   }).setView([48.8566, 2.3522], 12);
 
-  L.tileLayer("https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=PL2jHQqSB8xZ7Bp6aXpF", {
+  L.tileLayer(`https://api.maptiler.com/maps/streets-v4/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`, {
     attribution:
       '© <a href="https://www.maptiler.com/copyright/">MapTiler</a> © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom,
@@ -305,7 +327,17 @@ onMounted(() => {
 onUnmounted(() => {
   if (resizeObserver) {
     resizeObserver.disconnect();
+    resizeObserver = null;
   }
+  for (const md of allMarkers) {
+    destroyMarkerForData(md);
+  }
+  allMarkers = [];
+  if (map) {
+    map.remove();
+    map = null;
+  }
+  markersLayer = null;
 });
 
 watch(

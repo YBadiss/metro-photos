@@ -77,7 +77,7 @@ watch(
 );
 
 function generateId(): string {
-  return Math.random().toString(36).substring(2, 9);
+  return crypto.randomUUID();
 }
 
 function addFiles(files: File[]) {
@@ -170,12 +170,14 @@ async function processQueue() {
       .finally(() => {
         processQueue();
       });
+
+    // Upload slot freed (now "processing"), pick up next pending
+    processQueue();
   } catch (err) {
     pending.status = "error";
     pending.error = err instanceof Error ? err.message : "Upload failed";
+    processQueue();
   }
-
-  processQueue();
 }
 
 async function processPhoto(upload: FileUpload) {
@@ -232,12 +234,15 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
   <div class="flex flex-col h-full">
     <!-- ==================== DETAIL VIEW ==================== -->
     <template v-if="selectedUpload">
-      <!-- Detail header with back button -->
+      <!-- Detail header with back and close buttons -->
       <div class="flex items-center gap-2 px-3 py-3 border-b flex-shrink-0">
         <button class="p-1 hover:bg-muted rounded transition-colors" @click="goBack">
           <ChevronLeft class="w-4 h-4 text-muted-foreground" />
         </button>
-        <h3 class="font-semibold text-sm truncate">{{ selectedUpload.file.name }}</h3>
+        <h3 class="font-semibold text-sm truncate flex-1">{{ selectedUpload.file.name }}</h3>
+        <button class="p-1 hover:bg-muted rounded transition-colors" @click="emit('close')">
+          <X class="w-4 h-4 text-muted-foreground" />
+        </button>
       </div>
 
       <!-- Detail content -->
@@ -245,7 +250,7 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
         <!-- Large preview image -->
         <div class="border-b">
           <img
-            :src="selectedUpload.result!.blurredUrl"
+            :src="selectedUpload.result?.blurredUrl"
             :alt="selectedUpload.file.name"
             class="w-full object-contain max-h-64 bg-black/5"
           />
@@ -262,7 +267,8 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
               </p>
               <p class="text-sm">{{ selectedUpload.result.matchedEntrance.entrance.name }}</p>
               <p class="text-xs text-muted-foreground mt-0.5">
-                {{ selectedUpload.result.matchedEntrance.distanceMeters }}m away &middot;
+                {{ Math.round(selectedUpload.result.matchedEntrance.distanceMeters) }}m away
+                &middot;
                 {{ selectedUpload.result.matchedEntrance.station.town }}
               </p>
               <div
@@ -397,9 +403,9 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
             @click="selectUpload(upload)"
           >
             <!-- Processed: show blurred image -->
-            <template v-if="upload.status === 'processed'">
+            <template v-if="upload.status === 'processed' && upload.result">
               <img
-                :src="upload.result!.blurredUrl"
+                :src="upload.result.blurredUrl"
                 :alt="upload.file.name"
                 class="w-full h-full object-cover"
               />
