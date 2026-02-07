@@ -5,6 +5,9 @@ SSH_OPTIONS=("$@")
 # Build the project
 bun run build
 
+# Deploy Trigger.dev tasks
+bunx trigger deploy
+
 timestamp=$(date +%s)
 DEPLOY_DIR="/var/www/api.metro-boulot.photos"
 
@@ -23,6 +26,10 @@ if [ -f .env.production ]; then
     if [ -n "$S3_SECRET_ACCESS_KEY" ]; then
         echo "S3_SECRET_ACCESS_KEY found in shell env, updating .env.production..."
         sed -i "s/S3_SECRET_ACCESS_KEY=.*/S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY/" .env.production
+    fi
+    if [ -n "$TRIGGER_SECRET_KEY" ]; then
+        echo "TRIGGER_SECRET_KEY found in shell env, updating .env.production..."
+        sed -i "s/TRIGGER_SECRET_KEY=.*/TRIGGER_SECRET_KEY=$TRIGGER_SECRET_KEY/" .env.production
     fi
     scp "${SSH_OPTIONS[@]}" .env.production root@167.71.143.97:${DEPLOY_DIR}-${timestamp}/.env
 fi
