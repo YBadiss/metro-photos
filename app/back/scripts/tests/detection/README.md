@@ -37,6 +37,7 @@ uv run python scripts/detect_faces.py path/to/image.jpeg -o result.json
 ```
 
 Options:
+
 - `-o, --output FILE` - Output JSON file (default: stdout)
 - `--det-size N` - Detection input size (default: 1280)
 
@@ -63,11 +64,13 @@ uv run python tests/detection/run_detection_tests.py --visualize
 ```
 
 This will:
+
 - Run face detection on all source images
 - Save detection JSON to `result/`
 - Generate visualizations showing detected boxes (green) over ground truth boxes (cyan)
 
 Options:
+
 - `--visualize` - Generate comparison visualizations
 - `--det-size N` - Detection input size (default: 1280)
 
@@ -80,6 +83,7 @@ uv run python tests/detection/evaluate.py
 ```
 
 Options:
+
 - `-v` - Show detailed area information
 - `abbesses` - Evaluate a single image by name
 

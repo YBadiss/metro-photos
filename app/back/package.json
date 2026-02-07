@@ -2,32 +2,44 @@
   "name": "metro-photos-back",
   "version": "1.0.0",
   "description": "Metro photos backend API",
+  "keywords": [],
+  "license": "ISC",
+  "author": "",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "tsx watch src/index.ts",
-    "deploy": "bash deploy.sh"
+    "start": "bun dist/index.js",
+    "dev:service": "bun --watch src/index.ts",
+    "dev:trigger": "trigger dev",
+    "dev": "concurrently -n api,trigger -c blue,magenta \"bun run dev:service\" \"bun run dev:trigger\"",
+    "deploy": "bash deploy.sh",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "fmt": "oxfmt",
+    "fmt:check": "oxfmt --check",
+    "check": "oxlint && oxfmt --check && tsc --noEmit"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "dependencies": {
-    "@aws-sdk/client-s3": "^3.490.0",
-    "@aws-sdk/s3-request-presigner": "^3.490.0",
-    "@trigger.dev/python": "^4.3.2",
-    "@trigger.dev/sdk": "^4.3.2",
-    "cors": "^2.8.5",
-    "dotenv": "^16.3.1",
-    "express": "^4.18.2",
-    "uuid": "^9.0.0"
+    "@aws-sdk/client-s3": "^3.985.0",
+    "@aws-sdk/s3-request-presigner": "^3.985.0",
+    "@trigger.dev/python": "^4.3.3",
+    "@trigger.dev/sdk": "^4.3.3",
+    "dotenv": "^17.2.4",
+    "express": "^5.2.1",
+    "uuid": "^13.0.0"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
-    "@types/node": "^20.10.0",
-    "@types/uuid": "^9.0.0",
-    "tsx": "^4.7.0",
-    "typescript": "^5.3.0"
+    "@types/express": "^5.0.6",
+    "@types/node": "^22.15.0",
+    "concurrently": "^9.2.1",
+    "oxfmt": "^0.28.0",
+    "oxlint": "^1.43.0",
+    "trigger.dev": "^4.3.3",
+    "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "cookie": "^0.7.0",
+    "esbuild": "^0.25.0",
+    "tar": "^7.5.7"
   }
 }

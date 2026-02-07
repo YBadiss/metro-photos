@@ -39,9 +39,7 @@ export interface UploadUrlResponse {
   expiresIn: number;
 }
 
-export async function generateUploadUrl(
-  request: UploadUrlRequest
-): Promise<UploadUrlResponse> {
+export async function generateUploadUrl(request: UploadUrlRequest): Promise<UploadUrlResponse> {
   const extension = request.filename.split(".").pop() || "jpg";
   const key = `uploads/${uuidv4()}.${extension}`;
 

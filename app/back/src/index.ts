@@ -1,22 +1,26 @@
 import "./env"; // Must be first to load env vars before other imports
-import cors from "cors";
 import express from "express";
 import { readFileSync } from "fs";
 import { join } from "path";
 import { generateUploadUrl, generateDownloadUrl } from "./s3";
-import { tasks, runs } from "@trigger.dev/sdk/v3";
+import { tasks, runs } from "@trigger.dev/sdk";
 import type { detectFacesTask } from "./trigger/detectFaces";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
 // Enable CORS for frontend
-app.use(cors());
+app.use((_req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header("Access-Control-Allow-Headers", "Content-Type");
+  next();
+});
 app.use(express.json());
 
 // Load zones_metro.json from data folder
 // Use process.cwd() because:
-// - Local: tsx runs from app/back/, data is at ./data/
+// - Local: bun runs from app/back/, data is at ./data/
 // - Prod: pm2 runs from deploy dir, data is at ./data/
 const dataPath = join(process.cwd(), "data/zones_metro.json");
 const zonesMetro = JSON.parse(readFileSync(dataPath, "utf-8"));
@@ -65,10 +69,10 @@ app.post("/detect_faces", async (req, res) => {
     const imageUrl = await generateDownloadUrl(imageKey);
 
     // Trigger the task
-    const handle = await tasks.trigger<typeof detectFacesTask>(
-      "detect-faces",
-      { imageUrl, detSize }
-    );
+    const handle = await tasks.trigger<typeof detectFacesTask>("detect-faces", {
+      imageUrl,
+      detSize,
+    });
 
     console.log("Task triggered with ID:", handle.id);
 
