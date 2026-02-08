@@ -1,4 +1,4 @@
-import { task, logger } from "@trigger.dev/sdk";
+import { task, logger, metadata } from "@trigger.dev/sdk";
 import { python } from "@trigger.dev/python";
 
 interface ProcessPhotoPayload {
@@ -34,7 +34,24 @@ export const processPhotoTask = task({
   run: async (payload: ProcessPhotoPayload): Promise<ProcessPhotoResult> => {
     const { downloadUrl, uploadUrl, detSize = 1280 } = payload;
 
-    logger.info("Starting photo processing (detect + blur)", { detSize });
+    // Stage 1: Extract EXIF data (fast, ~100ms)
+    metadata.set("stage", "analyzing_location");
+    logger.info("Stage: analyzing location (EXIF extraction)");
+
+    const exifResult = await python.runScript("./scripts/extract_exif.py", [
+      downloadUrl,
+    ]);
+
+    if (exifResult.stderr) {
+      logger.info("EXIF extraction stderr", { stderr: exifResult.stderr });
+    }
+
+    const exifData: ExifData = JSON.parse(exifResult.stdout);
+    logger.info("EXIF data extracted", { exif: exifData });
+
+    // Stage 2: Detect faces, blur, and upload (slow, 5-20s)
+    metadata.set("stage", "blurring_faces");
+    logger.info("Stage: blurring faces");
 
     const result = await python.runScript("./scripts/process_photo.py", [
       downloadUrl,
@@ -54,6 +71,13 @@ export const processPhotoTask = task({
       blurred: jsonResult.blurred,
     });
 
-    return jsonResult;
+    // Merge EXIF: prefer the dedicated extraction (ran before any processing)
+    return {
+      ...jsonResult,
+      exif: {
+        ...jsonResult.exif,
+        ...exifData,
+      },
+    };
   },
 });

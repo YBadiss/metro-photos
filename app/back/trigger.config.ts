@@ -38,7 +38,7 @@ export default defineConfig({
     extensions: [
       systemPackages(["build-essential", "cmake", "python3-dev"]),
       pythonExtension({
-        scripts: ["./scripts/detect_faces.py", "./scripts/process_photo.py"],
+        scripts: ["./scripts/detect_faces.py", "./scripts/process_photo.py", "./scripts/extract_exif.py"],
         requirementsFile: "./requirements.txt",
         // Use uv's venv Python in dev mode
         devPythonBinaryPath: "./scripts/.venv/bin/python",
