@@ -121,7 +121,7 @@ onMounted(() => {
     keyboard: false,
     attributionControl: false,
     tap: false,
-  }).setView([props.center.lat, props.center.lon], 18);
+  } as L.MapOptions).setView([props.center.lat, props.center.lon], 18);
 
   createTileLayer(19).addTo(map);
   markersLayer = L.layerGroup().addTo(map);

@@ -34,3 +34,14 @@ export interface FileUpload {
   result?: ProcessingResult;
   photoId?: number;
 }
+
+export interface LatestPhoto {
+  id: number;
+  thumbnail: string | null;
+  accessId: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  takenAt: string | null;
+  camera: string | null;
+  createdAt: string;
+}

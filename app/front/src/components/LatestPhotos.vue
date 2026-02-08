@@ -1,30 +1,23 @@
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
-import { Loader2, ImageOff, ZoomIn } from "lucide-vue-next";
+import { Loader2, ImageOff } from "lucide-vue-next";
 import type { Zone } from "../types/metro";
-import PhotoLightbox from "./PhotoLightbox.vue";
+
+import type { LatestPhoto } from "../types/uploads";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
-
-interface LatestPhoto {
-  id: number;
-  thumbnail: string | null;
-  accessId: string | null;
-  latitude: number | null;
-  longitude: number | null;
-  takenAt: string | null;
-  camera: string | null;
-  createdAt: string;
-}
 
 const props = defineProps<{
   zones: Zone[];
 }>();
 
+const emit = defineEmits<{
+  "photo-selected": [photo: LatestPhoto];
+}>();
+
 const photos = ref<LatestPhoto[]>([]);
 const loading = ref(true);
 const error = ref<string | null>(null);
-const lightboxPhotoId = ref<number | null>(null);
 
 function lookupEntrance(accessId: string | null) {
   if (!accessId) return null;
@@ -85,16 +78,18 @@ onMounted(fetchLatest);
 
     <!-- Photo grid -->
     <div v-else class="photo-grid">
-      <div v-for="photo in photos" :key="photo.id" class="photo-card">
-        <div class="photo-image" @click="lightboxPhotoId = photo.id">
+      <div
+        v-for="photo in photos"
+        :key="photo.id"
+        class="photo-card"
+        @click="emit('photo-selected', photo)"
+      >
+        <div class="photo-image">
           <img
             v-if="photo.thumbnail"
             :src="`data:image/jpeg;base64,${photo.thumbnail}`"
             :alt="`Photo ${photo.id}`"
           />
-          <div class="photo-image-overlay">
-            <ZoomIn class="w-6 h-6 text-white" />
-          </div>
         </div>
         <div class="photo-info">
           <template v-if="lookupEntrance(photo.accessId)">
@@ -115,12 +110,6 @@ onMounted(fetchLatest);
         </div>
       </div>
     </div>
-
-    <PhotoLightbox
-      v-if="lightboxPhotoId"
-      :photo-id="lightboxPhotoId"
-      @close="lightboxPhotoId = null"
-    />
   </div>
 </template>
 
@@ -153,6 +142,7 @@ onMounted(fetchLatest);
   border: 1px solid hsl(var(--border));
   background: hsl(var(--background));
   transition: box-shadow 0.2s;
+  cursor: pointer;
 }
 
 .photo-card:hover {
@@ -163,29 +153,12 @@ onMounted(fetchLatest);
   aspect-ratio: 4 / 3;
   overflow: hidden;
   background: hsl(var(--muted));
-  position: relative;
-  cursor: pointer;
 }
 
 .photo-image img {
   width: 100%;
   height: 100%;
   object-fit: cover;
-}
-
-.photo-image-overlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.4);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 0.2s;
-}
-
-.photo-image:hover .photo-image-overlay {
-  opacity: 1;
 }
 
 .photo-info {

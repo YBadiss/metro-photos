@@ -422,7 +422,7 @@ onMounted(() => {
     minZoom,
     maxZoom,
     tap: false,
-  }).setView([48.8566, 2.3522], 12);
+  } as L.MapOptions).setView([48.8566, 2.3522], 12);
 
   createTileLayer(maxZoom).addTo(map);
 

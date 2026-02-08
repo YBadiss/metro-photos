@@ -9,7 +9,8 @@ import InfoModal from "./components/InfoModal.vue";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Map, Upload, Images } from "lucide-vue-next";
 import type { Zone } from "./types/metro";
-import type { FileUpload } from "./types/uploads";
+import type { FileUpload, MatchedEntrance, LatestPhoto } from "./types/uploads";
+import { haversineMeters } from "@/utils/coordinates";
 
 const zones: Ref<Zone[]> = ref([]);
 const loading = ref(true);
@@ -19,6 +20,7 @@ const metroMapRef = ref<InstanceType<typeof MetroMap> | null>(null);
 
 const activeTab = ref("map");
 const selectedUpload = ref<FileUpload | null>(null);
+const selectedGalleryUpload = ref<FileUpload | null>(null);
 const selectedZoneId = ref<string | null>(null);
 const selectedAccessId = ref<string | null>(null);
 
@@ -70,6 +72,56 @@ function handleStationClicked(zoneId: string | null) {
 
 function handleEntranceClicked(accessId: string | null) {
   selectedAccessId.value = accessId;
+}
+
+function handleGalleryPhotoSelected(photo: LatestPhoto) {
+  let matchedEntrance: MatchedEntrance | null = null;
+  if (photo.accessId) {
+    for (const zone of zones.value) {
+      for (const access of zone.accesses) {
+        if (access.id === photo.accessId) {
+          let distanceMeters = 0;
+          if (photo.latitude != null && photo.longitude != null) {
+            distanceMeters = Math.round(
+              haversineMeters(photo.latitude, photo.longitude, access.geo_point.lat, access.geo_point.lon),
+            );
+          }
+          matchedEntrance = {
+            entrance: { id: access.id, name: access.name, short_name: access.short_name },
+            station: { id: zone.id, name: zone.name, town: zone.town },
+            lines: zone.lines,
+            distanceMeters,
+          };
+          break;
+        }
+      }
+      if (matchedEntrance) break;
+    }
+  }
+
+  const title = matchedEntrance
+    ? `${matchedEntrance.station.name} - ${matchedEntrance.entrance.name}`
+    : `Photo ${photo.id}`;
+
+  selectedGalleryUpload.value = {
+    id: `gallery-${photo.id}`,
+    file: new File([], title),
+    status: "validated",
+    progress: 100,
+    photoId: photo.id,
+    result: {
+      blurredUrl: photo.thumbnail ? `data:image/jpeg;base64,${photo.thumbnail}` : "",
+      blurredKey: "",
+      facesCount: 0,
+      exif: {
+        latitude: photo.latitude ?? undefined,
+        longitude: photo.longitude ?? undefined,
+        dateTime: photo.takenAt ?? undefined,
+        camera: photo.camera ?? undefined,
+      },
+      matchedEntrance,
+    },
+  };
 }
 
 watch(selectedZoneId, () => {
@@ -130,7 +182,19 @@ watch(selectedZoneId, () => {
 
         <!-- Gallery tab -->
         <TabsContent value="gallery" class="tab-content">
-          <LatestPhotos :zones="zones" />
+          <div class="gallery-layout">
+            <div class="gallery-grid">
+              <LatestPhotos :zones="zones" @photo-selected="handleGalleryPhotoSelected" />
+            </div>
+            <div v-if="selectedGalleryUpload" class="gallery-sidebar">
+              <PhotoDetailSidebar
+                :upload="selectedGalleryUpload"
+                :zones="zones"
+                @close="selectedGalleryUpload = null"
+                @validated="() => {}"
+              />
+            </div>
+          </div>
         </TabsContent>
 
         <!-- Uploads tab -->
@@ -245,18 +309,21 @@ watch(selectedZoneId, () => {
   }
 
   .map-layout,
-  .uploads-layout {
+  .uploads-layout,
+  .gallery-layout {
     flex-direction: column;
   }
 
   .map-wrapper,
-  .uploads-grid {
+  .uploads-grid,
+  .gallery-grid {
     flex: none;
     height: 50%;
   }
 
   .map-sidebar,
-  .uploads-sidebar {
+  .uploads-sidebar,
+  .gallery-sidebar {
     width: auto;
     flex: 1;
     min-height: 0;
@@ -305,6 +372,24 @@ watch(selectedZoneId, () => {
 }
 
 .uploads-sidebar {
+  width: 24rem;
+  flex-shrink: 0;
+}
+
+.gallery-layout {
+  display: flex;
+  height: 100%;
+  background: hsl(var(--card));
+}
+
+.gallery-grid {
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.gallery-sidebar {
   width: 24rem;
   flex-shrink: 0;
 }
