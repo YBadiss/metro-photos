@@ -168,6 +168,7 @@ interface FinalizedResult {
   exif: ExifData | null;
   matchedEntrance: MatchedEntrance | null;
   status: string;
+  rejectionReason?: string;
 }
 
 const pendingRuns = new Map<string, PendingRun>();
@@ -311,10 +312,7 @@ app.get("/process-photo/:runId/status", async (req, res) => {
 
       console.log("Photo processing result", output.validationConfidence);
 
-      // Generate a download URL for the blurred image
-      const blurredUrl = await generateDownloadUrl(pending.processedKey);
-
-      // Delete the original upload from S3 (only keep the blurred version)
+      // Always delete the original upload from S3
       await deleteObject(pending.imageKey);
 
       // Match GPS coordinates to nearest metro entrance
@@ -330,18 +328,32 @@ app.get("/process-photo/:runId/status", async (req, res) => {
         );
       }
 
-      // Determine status: invalid if LLM confidence too low, no GPS, or no nearby entrance
+      // Determine status with specific rejection reason
       const hasGps = output.exif?.latitude != null && output.exif?.longitude != null;
-      const photoStatus =
-        output.validationConfidence >= 70 && hasGps && matchedEntrance
-          ? "pending"
-          : "invalid";
+      let photoStatus = "pending";
+      let rejectionReason: string | undefined;
+
+      if (output.validationConfidence < 70) {
+        photoStatus = "invalid";
+        rejectionReason = "La photo ne semble pas être une entrée de métro";
+      } else if (!hasGps) {
+        photoStatus = "invalid";
+        rejectionReason = "La photo ne contient pas de données GPS";
+      } else if (!matchedEntrance) {
+        photoStatus = "invalid";
+        rejectionReason = "La photo est trop loin d'une entrée de métro";
+      }
+
+      // Generate download URL for blurred image (only exists if processing ran)
+      const blurredUrl = photoStatus !== "invalid"
+        ? await generateDownloadUrl(pending.processedKey)
+        : "";
 
       // Always persist photo metadata
       const [insertedPhoto] = await db
         .insert(photosTable)
         .values({
-          s3Key: pending.processedKey,
+          s3Key: photoStatus !== "invalid" ? pending.processedKey : "",
           accessId: matchedEntrance?.entrance.id ?? null,
           latitude: output.exif?.latitude ?? null,
           longitude: output.exif?.longitude ?? null,
@@ -354,13 +366,14 @@ app.get("/process-photo/:runId/status", async (req, res) => {
 
       const result: FinalizedResult = {
         photoId: insertedPhoto.id,
-        blurredKey: pending.processedKey,
+        blurredKey: photoStatus !== "invalid" ? pending.processedKey : "",
         blurredUrl,
         facesCount: output.faces_count,
         blurred: output.blurred,
         exif: output.exif ?? null,
         matchedEntrance,
         status: photoStatus,
+        rejectionReason,
       };
 
       // Cache result and clean up pending context

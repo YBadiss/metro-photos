@@ -146,7 +146,7 @@ async function processPhoto(upload: FileUpload) {
       };
       if (statusData.result.status === "invalid") {
         upload.status = "error";
-        upload.error = "Photo invalide";
+        upload.error = statusData.result.rejectionReason || "Photo invalide";
       } else {
         upload.status = "processed";
       }

@@ -52,7 +52,69 @@ export const processPhotoTask = task({
     const exifData: ExifData = JSON.parse(exifResult.stdout);
     logger.info("EXIF data extracted", { exif: exifData });
 
-    // Stage 2: Detect faces, blur, and upload (slow, 5-20s)
+    // Stage 2: Validate content with GPT-4o-mini vision (fast, ~1-2s)
+    metadata.set("stage", "validating_content");
+    logger.info("Stage: validating content with LLM");
+
+    const CONFIDENCE_THRESHOLD = 70;
+
+    async function callValidation(imageUrl: string): Promise<number> {
+      const openai = new OpenAI();
+      const chatResponse = await openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        max_tokens: 50,
+        temperature: 0.2,
+        messages: [
+          {
+            role: "user",
+            content: [
+              {
+                type: "image_url",
+                image_url: { url: imageUrl, detail: "low" },
+              },
+              {
+                type: "text",
+                text: 'Is this a photo of a Paris metro entrance? Reply with JSON only: {"confidence": <0-100>}',
+              },
+            ],
+          },
+        ],
+      });
+
+      const text = chatResponse.choices[0]?.message?.content ?? "";
+      const match = text.match(/\{[^}]*"confidence"\s*:\s*(\d+)[^}]*\}/);
+      const confidence = match ? parseInt(match[1], 10) : 0;
+      logger.info("Validation result", { raw: text, confidence });
+      return confidence;
+    }
+
+    let validationConfidence = 0;
+    try {
+      validationConfidence = await callValidation(downloadUrl);
+
+      // Retry once if below threshold, take the max
+      if (validationConfidence < CONFIDENCE_THRESHOLD) {
+        logger.info("First validation below threshold, retrying", { confidence: validationConfidence });
+        const secondConfidence = await callValidation(downloadUrl);
+        validationConfidence = Math.max(validationConfidence, secondConfidence);
+      }
+    } catch (err) {
+      logger.error("Validation LLM call failed, defaulting to 0", { error: String(err) });
+    }
+
+    // Skip expensive processing if content validation failed
+    if (validationConfidence < CONFIDENCE_THRESHOLD) {
+      logger.info("Skipping face blurring for invalid photo", { confidence: validationConfidence });
+      return {
+        faces_count: 0,
+        boxes: [],
+        blurred: false,
+        exif: exifData,
+        validationConfidence,
+      };
+    }
+
+    // Stage 3: Detect faces, blur, and upload (slow, 5-20s)
     metadata.set("stage", "blurring_faces");
     logger.info("Stage: blurring faces");
 
@@ -73,45 +135,6 @@ export const processPhotoTask = task({
       facesCount: jsonResult.faces_count,
       blurred: jsonResult.blurred,
     });
-
-    // Stage 3: Validate content with GPT-4o-mini vision
-    metadata.set("stage", "validating_content");
-    logger.info("Stage: validating content with LLM");
-
-    let validationConfidence = 0;
-    try {
-      const openai = new OpenAI();
-      const thumbnail = jsonResult.thumbnail;
-      if (thumbnail) {
-        const chatResponse = await openai.chat.completions.create({
-          model: "gpt-4o-mini",
-          messages: [
-            {
-              role: "user",
-              content: [
-                {
-                  type: "image_url",
-                  image_url: { url: `data:image/jpeg;base64,${thumbnail}` },
-                },
-                {
-                  type: "text",
-                  text: 'Is this a photo of a Paris metro entrance? Reply with JSON only: {"confidence": <0-100>}',
-                },
-              ],
-            },
-          ],
-        });
-
-        const text = chatResponse.choices[0]?.message?.content ?? "";
-        const match = text.match(/\{[^}]*"confidence"\s*:\s*(\d+)[^}]*\}/);
-        if (match) {
-          validationConfidence = parseInt(match[1], 10);
-        }
-        logger.info("Validation result", { raw: text, confidence: validationConfidence });
-      }
-    } catch (err) {
-      logger.error("Validation LLM call failed, defaulting to 0", { error: String(err) });
-    }
 
     // Merge EXIF: prefer the dedicated extraction (ran before any processing)
     return {
