@@ -330,8 +330,12 @@ app.get("/process-photo/:runId/status", async (req, res) => {
         );
       }
 
-      // Determine status based on LLM validation confidence
-      const photoStatus = output.validationConfidence >= 70 ? "pending" : "invalid";
+      // Determine status: invalid if LLM confidence too low, no GPS, or no nearby entrance
+      const hasGps = output.exif?.latitude != null && output.exif?.longitude != null;
+      const photoStatus =
+        output.validationConfidence >= 70 && hasGps && matchedEntrance
+          ? "pending"
+          : "invalid";
 
       // Always persist photo metadata
       const [insertedPhoto] = await db
