@@ -335,13 +335,13 @@ app.get("/process-photo/:runId/status", async (req, res) => {
 
       if (output.validationConfidence < 70) {
         photoStatus = "invalid";
-        rejectionReason = "La photo ne semble pas être une entrée de métro";
+        rejectionReason = "Pas une entrée de métro";
       } else if (!hasGps) {
         photoStatus = "invalid";
-        rejectionReason = "La photo ne contient pas de données GPS";
+        rejectionReason = "Pas de données GPS";
       } else if (!matchedEntrance) {
         photoStatus = "invalid";
-        rejectionReason = "La photo est trop loin d'une entrée de métro";
+        rejectionReason = "Trop loin d'une entrée";
       }
 
       // Generate download URL for blurred image (only exists if processing ran)

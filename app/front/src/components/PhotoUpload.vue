@@ -308,7 +308,10 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
                   <XCircle class="w-5 h-5 text-destructive" />
                 </div>
 
-                <p class="text-xs text-muted-foreground truncate w-full text-center">
+                <p v-if="upload.status === 'error'" class="text-xs text-destructive text-center leading-tight">
+                  {{ upload.error }}
+                </p>
+                <p v-else class="text-xs text-muted-foreground truncate w-full text-center">
                   {{ upload.file.name }}
                 </p>
 
@@ -336,12 +339,6 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
                     >Finalisation...</template
                   >
                   <template v-else>Démarrage...</template>
-                </p>
-                <p
-                  v-else-if="upload.status === 'error'"
-                  class="text-xs text-destructive truncate w-full text-center"
-                >
-                  {{ upload.error }}
                 </p>
               </div>
 
