@@ -116,7 +116,7 @@ async function validate() {
 </script>
 
 <template>
-  <div class="flex flex-col h-full border-l">
+  <div class="sidebar-root flex flex-col h-full">
     <!-- Header -->
     <div class="flex items-center gap-2 px-3 py-3 border-b flex-shrink-0">
       <button class="p-1 hover:bg-muted rounded transition-colors" @click="emit('close')">
@@ -254,3 +254,16 @@ async function validate() {
     />
   </div>
 </template>
+
+<style scoped>
+.sidebar-root {
+  border-left: 1px solid hsl(var(--border));
+}
+
+@media (max-width: 640px) {
+  .sidebar-root {
+    border-left: none;
+    border-top: 1px solid hsl(var(--border));
+  }
+}
+</style>

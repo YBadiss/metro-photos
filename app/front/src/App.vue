@@ -19,6 +19,7 @@ const metroMapRef = ref<InstanceType<typeof MetroMap> | null>(null);
 
 const activeTab = ref("map");
 const selectedUpload = ref<FileUpload | null>(null);
+const selectedZoneId = ref<string | null>(null);
 const selectedAccessId = ref<string | null>(null);
 
 // API base URL from environment
@@ -62,11 +63,16 @@ function handleCloseSidebar() {
   selectedUpload.value = null;
 }
 
+function handleStationClicked(zoneId: string | null) {
+  selectedZoneId.value = zoneId;
+  if (!zoneId) selectedAccessId.value = null;
+}
+
 function handleEntranceClicked(accessId: string | null) {
   selectedAccessId.value = accessId;
 }
 
-watch(selectedAccessId, () => {
+watch(selectedZoneId, () => {
   nextTick(() => {
     metroMapRef.value?.invalidateSize();
   });
@@ -109,13 +115,14 @@ watch(selectedAccessId, () => {
         >
           <div class="map-layout">
             <div class="map-wrapper">
-              <MetroMap ref="metroMapRef" :zones="zones" @entrance-clicked="handleEntranceClicked" />
+              <MetroMap ref="metroMapRef" :zones="zones" @station-clicked="handleStationClicked" @entrance-clicked="handleEntranceClicked" />
             </div>
-            <div v-if="selectedAccessId" class="map-sidebar">
+            <div v-if="selectedZoneId" class="map-sidebar">
               <EntrancePhotosSidebar
-                :access-id="selectedAccessId"
+                :zone-id="selectedZoneId"
+                :filtered-access-id="selectedAccessId"
                 :zones="zones"
-                @close="selectedAccessId = null"
+                @close="selectedZoneId = null; selectedAccessId = null"
               />
             </div>
           </div>
@@ -235,6 +242,18 @@ watch(selectedAccessId, () => {
 
   .app-bar {
     gap: 0.5rem;
+  }
+
+  .map-layout,
+  .uploads-layout {
+    flex-direction: column;
+  }
+
+  .map-sidebar,
+  .uploads-sidebar {
+    width: auto;
+    flex: 1;
+    min-height: 0;
   }
 }
 

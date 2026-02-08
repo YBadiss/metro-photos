@@ -35,6 +35,7 @@ const props = withDefaults(defineProps<Props>(), {
 });
 
 const emit = defineEmits<{
+  "station-clicked": [zoneId: string | null];
   "entrance-clicked": [accessId: string | null];
 }>();
 
@@ -202,6 +203,7 @@ function openStation(sd: StationData): void {
   closeStation();
 
   openStationId = sd.zone.id;
+  emit("station-clicked", sd.zone.id);
 
   // Dim the station marker
   const stationSize = getStationMarkerSize();
@@ -240,6 +242,7 @@ function openStation(sd: StationData): void {
 function closeStation(): void {
   if (!openStationId) return;
 
+  emit("station-clicked", null);
   emit("entrance-clicked", null);
   closeOpenedTooltip();
   clearPolylines();

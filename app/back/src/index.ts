@@ -17,7 +17,7 @@ import {
   zoneLines,
   photos as photosTable,
 } from "./db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, inArray } from "drizzle-orm";
 
 // Metro data types (matching front/src/types/metro.ts)
 interface GeoPoint {
@@ -405,6 +405,44 @@ app.get("/photos/latest", async (req, res) => {
   } catch (error) {
     console.error("Error fetching latest photos:", error);
     res.status(500).json({ error: "Failed to fetch latest photos" });
+  }
+});
+
+// List all photos for a given station (zone)
+app.get("/zones/:id/photos", async (req, res) => {
+  try {
+    const zoneId = req.params.id;
+    const zoneAccesses = await db
+      .select({ id: accessesTable.id })
+      .from(accessesTable)
+      .where(eq(accessesTable.zoneId, zoneId));
+
+    const accessIds = zoneAccesses.map((a) => a.id);
+    if (accessIds.length === 0) {
+      res.json([]);
+      return;
+    }
+
+    const rows = await db
+      .select()
+      .from(photosTable)
+      .where(inArray(photosTable.accessId, accessIds));
+
+    const results = rows.map((row) => ({
+      id: row.id,
+      thumbnail: row.thumbnail,
+      accessId: row.accessId,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      takenAt: row.takenAt,
+      camera: row.camera,
+      createdAt: row.createdAt,
+    }));
+
+    res.json(results);
+  } catch (error) {
+    console.error("Error fetching zone photos:", error);
+    res.status(500).json({ error: "Failed to fetch photos" });
   }
 });
 
