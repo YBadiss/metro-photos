@@ -1,4 +1,9 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { v4 as uuidv4 } from "uuid";
 
@@ -75,6 +80,10 @@ export async function generateUploadUrlForKey(
   });
 
   return { uploadUrl, key };
+}
+
+export async function deleteObject(key: string): Promise<void> {
+  await s3Client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }));
 }
 
 export async function generateDownloadUrl(key: string): Promise<string> {

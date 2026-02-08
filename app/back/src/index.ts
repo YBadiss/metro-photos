@@ -1,6 +1,11 @@
 import "./env"; // Must be first to load env vars before other imports
 import express from "express";
-import { generateUploadUrl, generateUploadUrlForKey, generateDownloadUrl } from "./s3";
+import {
+  generateUploadUrl,
+  generateUploadUrlForKey,
+  generateDownloadUrl,
+  deleteObject,
+} from "./s3";
 import { tasks, runs } from "@trigger.dev/sdk";
 import type { detectFacesTask } from "./trigger/detectFaces";
 import type { processPhotoTask, ProcessPhotoResult } from "./trigger/processPhoto";
@@ -10,6 +15,7 @@ import {
   accesses as accessesTable,
   lines as linesTable,
   zoneLines,
+  photos as photosTable,
 } from "./db/schema";
 import { eq } from "drizzle-orm";
 
@@ -263,6 +269,9 @@ app.post("/process-photo", async (req, res) => {
 
     console.log("Photo processing result:", JSON.stringify(output, null, 2));
 
+    // Delete the original upload from S3 (only keep the blurred version)
+    await deleteObject(imageKey);
+
     // Match GPS coordinates to nearest metro entrance
     let matchedEntrance: MatchedEntrance | null = null;
     if (output.exif?.latitude != null && output.exif?.longitude != null) {
@@ -276,6 +285,18 @@ app.post("/process-photo", async (req, res) => {
       );
     }
 
+    // Persist photo metadata if matched to an entrance
+    if (matchedEntrance) {
+      await db.insert(photosTable).values({
+        s3Key: processedKey,
+        accessId: matchedEntrance.entrance.id,
+        latitude: output.exif?.latitude ?? null,
+        longitude: output.exif?.longitude ?? null,
+        takenAt: output.exif?.dateTime ? new Date(output.exif.dateTime) : null,
+        camera: output.exif?.camera ?? null,
+      });
+    }
+
     res.json({
       blurredKey: processedKey,
       blurredUrl,
@@ -287,6 +308,32 @@ app.post("/process-photo", async (req, res) => {
   } catch (error) {
     console.error("Error processing photo:", error);
     res.status(500).json({ error: "Failed to process photo" });
+  }
+});
+
+// List photos for a given entrance
+app.get("/accesses/:id/photos", async (req, res) => {
+  try {
+    const accessId = req.params.id;
+    const rows = await db.select().from(photosTable).where(eq(photosTable.accessId, accessId));
+
+    const results = await Promise.all(
+      rows.map(async (row) => ({
+        id: row.id,
+        s3Key: row.s3Key,
+        url: await generateDownloadUrl(row.s3Key),
+        latitude: row.latitude,
+        longitude: row.longitude,
+        takenAt: row.takenAt,
+        camera: row.camera,
+        createdAt: row.createdAt,
+      })),
+    );
+
+    res.json(results);
+  } catch (error) {
+    console.error("Error fetching photos:", error);
+    res.status(500).json({ error: "Failed to fetch photos" });
   }
 });
 
