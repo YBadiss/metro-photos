@@ -3,6 +3,7 @@ import { ref, onMounted, watch, nextTick, type Ref } from "vue";
 import MetroMap from "./components/MetroMap.vue";
 import PhotoUpload from "./components/PhotoUpload.vue";
 import PhotoDetailSidebar from "./components/PhotoDetailSidebar.vue";
+import EntrancePhotosSidebar from "./components/EntrancePhotosSidebar.vue";
 import InfoModal from "./components/InfoModal.vue";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Map, Upload } from "lucide-vue-next";
@@ -17,6 +18,7 @@ const metroMapRef = ref<InstanceType<typeof MetroMap> | null>(null);
 
 const activeTab = ref("map");
 const selectedUpload = ref<FileUpload | null>(null);
+const selectedAccessId = ref<string | null>(null);
 
 // API base URL from environment
 const API_URL = import.meta.env.VITE_API_URL || "";
@@ -58,6 +60,16 @@ function handleValidated(_photoId: number) {
 function handleCloseSidebar() {
   selectedUpload.value = null;
 }
+
+function handleEntranceClicked(accessId: string | null) {
+  selectedAccessId.value = accessId;
+}
+
+watch(selectedAccessId, () => {
+  nextTick(() => {
+    metroMapRef.value?.invalidateSize();
+  });
+});
 </script>
 
 <template>
@@ -93,8 +105,17 @@ function handleCloseSidebar() {
           class="tab-content"
           :class="{ hidden: activeTab !== 'map' }"
         >
-          <div class="map-wrapper">
-            <MetroMap ref="metroMapRef" :zones="zones" />
+          <div class="map-layout">
+            <div class="map-wrapper">
+              <MetroMap ref="metroMapRef" :zones="zones" @entrance-clicked="handleEntranceClicked" />
+            </div>
+            <div v-if="selectedAccessId" class="map-sidebar">
+              <EntrancePhotosSidebar
+                :access-id="selectedAccessId"
+                :zones="zones"
+                @close="selectedAccessId = null"
+              />
+            </div>
           </div>
         </TabsContent>
 
@@ -211,9 +232,21 @@ function handleCloseSidebar() {
   clip: rect(0, 0, 0, 0);
 }
 
-.map-wrapper {
-  width: 100%;
+.map-layout {
+  display: flex;
   height: 100%;
+}
+
+.map-wrapper {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  background: hsl(var(--card));
+}
+
+.map-sidebar {
+  width: 24rem;
+  flex-shrink: 0;
   background: hsl(var(--card));
 }
 

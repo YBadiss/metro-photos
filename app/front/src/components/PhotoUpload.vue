@@ -1,15 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { Progress } from "@/components/ui/progress";
-import {
-  XCircle,
-  Image,
-  X,
-  Check,
-  MapPin,
-  ShieldCheck,
-  CheckCircle2,
-} from "lucide-vue-next";
+import { XCircle, Image, X, Check, MapPin, ShieldCheck, CheckCircle2 } from "lucide-vue-next";
 import type { FileUpload } from "@/types/uploads";
 import UploadDropZone from "./UploadDropZone.vue";
 

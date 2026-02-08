@@ -55,3 +55,18 @@ export function createPieChartIcon(colors: string[], size: number, dimmed = fals
     iconAnchor: [size / 2, size / 2],
   });
 }
+
+export function createEntranceIcon(color: string, size: number): L.DivIcon {
+  const r = size / 2;
+  const svg = `<svg width="${size}" height="${size}" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="${r}" cy="${r}" r="${r - 1.5}" fill="white" stroke="${color}" stroke-width="2.5"/>
+    <circle cx="${r}" cy="${r}" r="${r * 0.25}" fill="${color}"/>
+  </svg>`;
+
+  return L.divIcon({
+    html: svg,
+    className: "entrance-marker",
+    iconSize: [size, size],
+    iconAnchor: [size / 2, size / 2],
+  });
+}

@@ -7,78 +7,110 @@ import { ref, onMounted, onUnmounted, watch, type Ref } from "vue";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import type { Zone, Access } from "../types/metro";
-import { createTileLayer, createPieChartIcon } from "@/utils/map";
+import { createTileLayer, createPieChartIcon, createEntranceIcon } from "@/utils/map";
 
 interface Props {
   zones?: Zone[];
 }
 
-interface MarkerData {
+// Station-level data (one per zone)
+interface StationData {
+  zone: Zone;
+  latLon: [number, number];
+  lineColors: string[];
   marker: L.Marker | null;
+}
+
+// Entrance-level data (one per access)
+interface EntranceData {
   zone: Zone;
   access: Access;
   latLon: [number, number];
-  lineColors: string[];
-  lineNames: string;
+  primaryColor: string;
+  marker: L.Marker | null;
 }
 
 const props = withDefaults(defineProps<Props>(), {
   zones: () => [],
 });
 
+const emit = defineEmits<{
+  "entrance-clicked": [accessId: string | null];
+}>();
+
 const mapContainer: Ref<HTMLElement | null> = ref(null);
 const minZoom = 12;
 const maxZoom = 19;
+
 let map: L.Map | null = null;
 let resizeObserver: ResizeObserver | null = null;
-let markersLayer: L.LayerGroup | null = null;
+let stationsLayer: L.LayerGroup | null = null;
+let entrancesLayer: L.LayerGroup | null = null;
 
-// Selection state
-let selectedAccess: Access | null = null;
-let selectedZone: Zone | null = null;
-let pinpointMode = false;
+// Which station is currently "open" (showing its entrances)
+let openStationId: string | null = null;
+let openPolylines: L.Polyline[] = [];
 let openedTooltipMarker: L.Marker | null = null;
 
-// All entrance data (lightweight, markers created/destroyed on demand)
-let allMarkers: MarkerData[] = [];
+// All data
+let allStations: StationData[] = [];
+let allEntrances: EntranceData[] = [];
 
-// Protect a marker from being destroyed by updateVisibleMarkers during flyTo animation
-let protectedAccessId: string | null = null;
-
-// RAF guard for updateVisibleMarkers
+// RAF guard
 let pendingVisibilityUpdate = false;
 
-// --- Icon helpers ---
+// --- Helpers ---
 
-function getMarkerSize(): number {
+function getStationMarkerSize(): number {
   if (!map) return 12;
   return (6 + (map.getZoom() - minZoom) * 2.5) * 2;
 }
 
-// --- Selection logic ---
-
-function isDimmed(md: MarkerData): boolean {
-  if (!selectedAccess || !selectedZone) return false;
-
-  if (pinpointMode) {
-    return md.access.id !== selectedAccess.id;
-  }
-
-  // Line-sharing mode: highlight if same access or shares lines
-  if (md.access.id === selectedAccess.id) return false;
-  const selectedLineIds = selectedZone.lines.map((l) => l.id);
-  return !md.zone.lines.some((l) => selectedLineIds.includes(l.id));
+function getEntranceMarkerSize(): number {
+  return Math.round(getStationMarkerSize() * 0.65);
 }
 
-function applyIcons(): void {
-  if (!markersLayer) return;
-  const size = getMarkerSize();
-  for (const md of allMarkers) {
-    if (md.marker && markersLayer.hasLayer(md.marker)) {
-      md.marker.setIcon(createPieChartIcon(md.lineColors, size, isDimmed(md)));
-    }
+function computeStationCenter(zone: Zone): [number, number] {
+  if (zone.accesses.length === 0) return [0, 0];
+  let sumLat = 0;
+  let sumLon = 0;
+  for (const access of zone.accesses) {
+    sumLat += access.geo_point.lat;
+    sumLon += access.geo_point.lon;
   }
+  return [sumLat / zone.accesses.length, sumLon / zone.accesses.length];
 }
+
+// --- Tooltip content ---
+
+function stationTooltipContent(sd: StationData): string {
+  const count = sd.zone.accesses.length;
+  const entranceText = count === 1 ? "1 entrance" : `${count} entrances`;
+
+  const lineIcons = sd.zone.lines
+    .filter((l) => l.icon_url)
+    .map((l) => `<img src="${l.icon_url}" alt="${l.name}" style="height: 16px;" />`)
+    .join("");
+
+  return `
+    <div class="metro-tooltip">
+      <strong>${sd.zone.name}</strong><br>
+      <span style="font-size: 11px; color: #666;">${entranceText}</span>
+      ${lineIcons ? `<div style="display: flex; gap: 2px; margin-top: 4px; flex-wrap: wrap;">${lineIcons}</div>` : ""}
+    </div>
+  `;
+}
+
+function entranceTooltipContent(ed: EntranceData): string {
+  return `
+    <div class="metro-tooltip">
+      <strong>${ed.zone.name}</strong><br>
+      ${ed.access.name}
+    </div>
+  `;
+}
+
+// --- Tooltip helpers ---
 
 function closeOpenedTooltip(): void {
   if (openedTooltipMarker) {
@@ -87,37 +119,13 @@ function closeOpenedTooltip(): void {
   }
 }
 
-function selectEntrance(access: Access, zone: Zone, pinpoint: boolean): void {
-  closeOpenedTooltip();
-  selectedAccess = access;
-  selectedZone = zone;
-  pinpointMode = pinpoint;
-  applyIcons();
-}
+// --- Station marker creation/destruction ---
 
-function resetSelection(): void {
-  if (!selectedAccess) return;
-  closeOpenedTooltip();
-  selectedAccess = null;
-  selectedZone = null;
-  pinpointMode = false;
-  applyIcons();
-}
+function createStationMarker(sd: StationData, size: number, dimmed = false): L.Marker {
+  const icon = createPieChartIcon(sd.lineColors, size, dimmed);
+  const marker = L.marker(sd.latLon, { icon });
 
-// --- On-demand marker creation/destruction ---
-
-function createMarkerForData(md: MarkerData, size: number): L.Marker {
-  const icon = createPieChartIcon(md.lineColors, size, isDimmed(md));
-  const marker = L.marker(md.latLon, { icon });
-
-  const tooltipContent = `
-    <div class="metro-tooltip">
-      <strong>${md.zone.name}</strong><br>
-      ${md.access.name}<br>
-      <span style="font-size: 11px; color: #666;">${md.lineNames || "N/A"}</span>
-    </div>
-  `;
-  marker.bindTooltip(tooltipContent, {
+  marker.bindTooltip(stationTooltipContent(sd), {
     direction: "top",
     offset: [0, -size / 4],
     className: "custom-tooltip",
@@ -125,45 +133,151 @@ function createMarkerForData(md: MarkerData, size: number): L.Marker {
 
   marker.on("click", (e) => {
     L.DomEvent.stopPropagation(e);
-    if (selectedAccess?.id === md.access.id) {
-      resetSelection();
+    if (openStationId === sd.zone.id) {
+      closeStation();
     } else {
-      selectEntrance(md.access, md.zone, false);
+      openStation(sd);
     }
   });
 
-  md.marker = marker;
+  sd.marker = marker;
   return marker;
 }
 
-function destroyMarkerForData(md: MarkerData): void {
-  if (!md.marker) return;
-  if (openedTooltipMarker === md.marker) {
-    openedTooltipMarker = null;
-  }
-  md.marker.off("click");
-  md.marker.unbindTooltip();
-  if (markersLayer) {
-    markersLayer.removeLayer(md.marker);
-  }
-  md.marker = null;
+function destroyStationMarker(sd: StationData): void {
+  if (!sd.marker) return;
+  if (openedTooltipMarker === sd.marker) openedTooltipMarker = null;
+  sd.marker.off("click");
+  sd.marker.unbindTooltip();
+  stationsLayer?.removeLayer(sd.marker);
+  sd.marker = null;
 }
 
-// --- Viewport-based marker lifecycle ---
+// --- Entrance marker creation/destruction ---
+
+function createEntranceMarker(ed: EntranceData, size: number): L.Marker {
+  const icon = createEntranceIcon(ed.primaryColor, size);
+  const marker = L.marker(ed.latLon, { icon });
+
+  marker.bindTooltip(entranceTooltipContent(ed), {
+    direction: "top",
+    offset: [0, -size / 4],
+    className: "custom-tooltip",
+  });
+
+  // Stop propagation so clicking an entrance doesn't close the station
+  marker.on("click", (e) => {
+    L.DomEvent.stopPropagation(e);
+    emit("entrance-clicked", ed.access.id);
+  });
+
+  ed.marker = marker;
+  return marker;
+}
+
+function destroyEntranceMarker(ed: EntranceData): void {
+  if (!ed.marker) return;
+  if (openedTooltipMarker === ed.marker) openedTooltipMarker = null;
+  ed.marker.off("click");
+  ed.marker.unbindTooltip();
+  entrancesLayer?.removeLayer(ed.marker);
+  ed.marker = null;
+}
+
+// --- Polyline helpers ---
+
+function clearPolylines(): void {
+  for (const pl of openPolylines) {
+    entrancesLayer?.removeLayer(pl);
+  }
+  openPolylines = [];
+}
+
+// --- Open / Close station ---
+
+function openStation(sd: StationData): void {
+  if (!map || !entrancesLayer) return;
+
+  // Close any currently open station first
+  closeStation();
+
+  openStationId = sd.zone.id;
+
+  // Dim the station marker
+  const stationSize = getStationMarkerSize();
+  if (sd.marker) {
+    sd.marker.setIcon(createPieChartIcon(sd.lineColors, stationSize, true));
+  }
+
+  // Show entrance markers + polylines for this station
+  const entranceSize = getEntranceMarkerSize();
+  const stationEntrances = allEntrances.filter((e) => e.zone.id === sd.zone.id);
+
+  for (const ed of stationEntrances) {
+    // Dotted line from station to entrance
+    const pl = L.polyline([sd.latLon, ed.latLon], {
+      color: "#999",
+      weight: 1.5,
+      dashArray: "4 6",
+      interactive: false,
+    });
+    entrancesLayer.addLayer(pl);
+    openPolylines.push(pl);
+
+    // Entrance marker
+    const marker = createEntranceMarker(ed, entranceSize);
+    entrancesLayer.addLayer(marker);
+  }
+
+  // Zoom to fit entrances + station
+  if (stationEntrances.length > 0) {
+    const allPoints = [sd.latLon, ...stationEntrances.map((e) => e.latLon)];
+    const bounds = L.latLngBounds(allPoints);
+    map.flyToBounds(bounds, { padding: [80, 80], maxZoom: 18 });
+  }
+}
+
+function closeStation(): void {
+  if (!openStationId) return;
+
+  emit("entrance-clicked", null);
+  closeOpenedTooltip();
+  clearPolylines();
+
+  // Remove entrance markers for the open station
+  for (const ed of allEntrances) {
+    if (ed.zone.id === openStationId && ed.marker) {
+      destroyEntranceMarker(ed);
+    }
+  }
+
+  // Restore the station marker to non-dimmed
+  const sd = allStations.find((s) => s.zone.id === openStationId);
+  openStationId = null;
+
+  if (sd?.marker) {
+    const size = getStationMarkerSize();
+    sd.marker.setIcon(createPieChartIcon(sd.lineColors, size, false));
+  }
+}
+
+// --- Viewport-based station marker sync ---
 
 function syncVisibleMarkers(): void {
-  if (!map || !markersLayer) return;
+  if (!map || !stationsLayer) return;
 
   const bounds = map.getBounds();
-  const size = getMarkerSize();
+  const size = getStationMarkerSize();
 
-  for (const md of allMarkers) {
-    const visible = bounds.contains(md.latLon);
-    if (visible && !md.marker) {
-      const marker = createMarkerForData(md, size);
-      markersLayer.addLayer(marker);
-    } else if (!visible && md.marker && md.access.id !== protectedAccessId) {
-      destroyMarkerForData(md);
+  for (const sd of allStations) {
+    const visible = bounds.contains(sd.latLon);
+    const isOpen = sd.zone.id === openStationId;
+
+    if (visible && !sd.marker) {
+      const marker = createStationMarker(sd, size, isOpen);
+      stationsLayer.addLayer(marker);
+    } else if (!visible && sd.marker) {
+      destroyStationMarker(sd);
     }
   }
 }
@@ -177,35 +291,66 @@ function updateVisibleMarkers(): void {
   });
 }
 
-// --- Build entrance data (only when zones data changes) ---
+// --- Build data (when zones change) ---
 
 function buildMarkers(): void {
-  if (!markersLayer) return;
+  if (!stationsLayer || !entrancesLayer) return;
 
-  // Destroy all existing markers
-  for (const md of allMarkers) {
-    destroyMarkerForData(md);
-  }
-  markersLayer.clearLayers();
-  allMarkers = [];
+  // Destroy all existing
+  closeStation();
+  for (const sd of allStations) destroyStationMarker(sd);
+  for (const ed of allEntrances) destroyEntranceMarker(ed);
+  stationsLayer.clearLayers();
+  entrancesLayer.clearLayers();
+  allStations = [];
+  allEntrances = [];
 
-  props.zones.forEach((zone) => {
-    const lineColors = zone.lines.map((line) => line.color).filter((c) => c) as string[];
-    const lineNames = zone.lines.map((line) => line.name).join(", ");
+  for (const zone of props.zones) {
+    const lineColors = zone.lines.map((l) => l.color).filter((c) => c) as string[];
+    const primaryColor = lineColors[0] ?? "#ff7800";
 
-    zone.accesses.forEach((access) => {
-      const latLon: [number, number] = [access.geo_point.lat, access.geo_point.lon];
-      allMarkers.push({ marker: null, zone, access, latLon, lineColors, lineNames });
+    // Station data
+    allStations.push({
+      zone,
+      latLon: computeStationCenter(zone),
+      lineColors,
+      marker: null,
     });
-  });
+
+    // Entrance data
+    for (const access of zone.accesses) {
+      allEntrances.push({
+        zone,
+        access,
+        latLon: [access.geo_point.lat, access.geo_point.lon],
+        primaryColor,
+        marker: null,
+      });
+    }
+  }
 
   syncVisibleMarkers();
 }
 
-// --- Zoom handler (resize icons only, no marker recreation) ---
+// --- Zoom handler (resize icons) ---
 
 function onZoomEnd(): void {
-  applyIcons();
+  if (!stationsLayer || !entrancesLayer) return;
+  const stationSize = getStationMarkerSize();
+  const entranceSize = getEntranceMarkerSize();
+
+  for (const sd of allStations) {
+    if (sd.marker && stationsLayer.hasLayer(sd.marker)) {
+      const isOpen = sd.zone.id === openStationId;
+      sd.marker.setIcon(createPieChartIcon(sd.lineColors, stationSize, isOpen));
+    }
+  }
+  for (const ed of allEntrances) {
+    if (ed.marker && entrancesLayer.hasLayer(ed.marker)) {
+      ed.marker.setIcon(createEntranceIcon(ed.primaryColor, entranceSize));
+    }
+  }
+
   updateVisibleMarkers();
 }
 
@@ -220,28 +365,45 @@ function invalidateSize(): void {
 }
 
 function flyToEntrance(accessId: string): void {
-  if (!map || !markersLayer) return;
+  if (!map || !entrancesLayer) return;
 
-  const found = allMarkers.find((m) => m.access.id === accessId);
+  const found = allEntrances.find((e) => e.access.id === accessId);
   if (!found) return;
 
-  // Create marker if it doesn't exist yet (out of viewport)
-  const size = getMarkerSize();
-  if (!found.marker) {
-    createMarkerForData(found, size);
-  }
-  if (!markersLayer.hasLayer(found.marker!)) {
-    markersLayer.addLayer(found.marker!);
+  const station = allStations.find((s) => s.zone.id === found.zone.id);
+  if (!station) return;
+
+  // Open the parent station (if not already open)
+  if (openStationId !== found.zone.id) {
+    closeStation();
+    openStationId = found.zone.id;
+
+    // Dim station marker
+    const stationSize = getStationMarkerSize();
+    if (station.marker) {
+      station.marker.setIcon(createPieChartIcon(station.lineColors, stationSize, true));
+    }
+
+    // Show entrance markers + polylines
+    const entranceSize = getEntranceMarkerSize();
+    const stationEntrances = allEntrances.filter((e) => e.zone.id === found.zone.id);
+    for (const ed of stationEntrances) {
+      const pl = L.polyline([station.latLon, ed.latLon], {
+        color: "#999",
+        weight: 1.5,
+        dashArray: "4 6",
+        interactive: false,
+      });
+      entrancesLayer.addLayer(pl);
+      openPolylines.push(pl);
+
+      const marker = createEntranceMarker(ed, entranceSize);
+      entrancesLayer.addLayer(marker);
+    }
   }
 
-  // Protect the target marker from being destroyed during fly animation
-  protectedAccessId = accessId;
-  map.once("moveend", () => {
-    protectedAccessId = null;
-  });
-
-  map.flyTo(found.latLon, 18);
-  selectEntrance(found.access, found.zone, true);
+  // Fly to the specific entrance
+  map.flyTo(found.latLon, Math.max(map.getZoom(), 18));
   found.marker!.openTooltip();
   openedTooltipMarker = found.marker;
 }
@@ -260,7 +422,8 @@ onMounted(() => {
 
   createTileLayer(maxZoom).addTo(map);
 
-  markersLayer = L.layerGroup().addTo(map);
+  stationsLayer = L.layerGroup().addTo(map);
+  entrancesLayer = L.layerGroup().addTo(map);
 
   if (props.zones.length > 0) {
     buildMarkers();
@@ -268,7 +431,7 @@ onMounted(() => {
 
   map.on("zoomend", onZoomEnd);
   map.on("moveend", updateVisibleMarkers);
-  map.on("click", resetSelection);
+  map.on("click", () => closeStation());
 
   resizeObserver = new ResizeObserver(() => {
     map?.invalidateSize();
@@ -281,15 +444,17 @@ onUnmounted(() => {
     resizeObserver.disconnect();
     resizeObserver = null;
   }
-  for (const md of allMarkers) {
-    destroyMarkerForData(md);
-  }
-  allMarkers = [];
+  clearPolylines();
+  for (const sd of allStations) destroyStationMarker(sd);
+  for (const ed of allEntrances) destroyEntranceMarker(ed);
+  allStations = [];
+  allEntrances = [];
   if (map) {
     map.remove();
     map = null;
   }
-  markersLayer = null;
+  stationsLayer = null;
+  entrancesLayer = null;
 });
 
 watch(
@@ -308,27 +473,17 @@ watch(
 </style>
 
 <style>
-/* Global styles for popups */
-.metro-popup h3 {
-  margin: 0 0 10px 0;
-  font-size: 16px;
-  color: #333;
-}
-
-.metro-popup p {
-  margin: 5px 0;
-  font-size: 14px;
-}
-
-.metro-popup strong {
-  font-weight: 600;
-}
-
 /* Pie chart marker styles */
 .pie-chart-marker {
   background: none !important;
   border: none !important;
   transition: opacity 0.3s ease;
+}
+
+/* Entrance marker styles */
+.entrance-marker {
+  background: none !important;
+  border: none !important;
 }
 
 /* Tooltip styles */
