@@ -33,7 +33,11 @@ async function fetchUrl(id: number) {
   }
 }
 
-watch(() => props.photoId, (id) => fetchUrl(id), { immediate: true });
+watch(
+  () => props.photoId,
+  (id) => fetchUrl(id),
+  { immediate: true },
+);
 </script>
 
 <template>

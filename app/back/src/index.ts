@@ -345,9 +345,8 @@ app.get("/process-photo/:runId/status", async (req, res) => {
       }
 
       // Generate download URL for blurred image (only exists if processing ran)
-      const blurredUrl = photoStatus !== "invalid"
-        ? await generateDownloadUrl(pending.processedKey)
-        : "";
+      const blurredUrl =
+        photoStatus !== "invalid" ? await generateDownloadUrl(pending.processedKey) : "";
 
       // Always persist photo metadata
       const [insertedPhoto] = await db

@@ -23,9 +23,9 @@
             </p>
 
             <p>
-              Les photos viennent de moi, et de <b>vous</b> ! Ajoutez vos propres photos
-              d'entrées de métro dans l'onglet <b>Ajout Photos</b> et participez à la
-              construction de cette mosaïque de notre belle ville.
+              Les photos viennent de moi, et de <b>vous</b> ! Ajoutez vos propres photos d'entrées
+              de métro dans l'onglet <b>Ajout Photos</b> et participez à la construction de cette
+              mosaïque de notre belle ville.
             </p>
 
             <ul>

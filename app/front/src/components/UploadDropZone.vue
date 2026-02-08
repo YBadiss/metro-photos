@@ -60,7 +60,9 @@ function onFileInput(e: Event) {
     <Upload class="w-10 h-10 text-muted-foreground" />
     <div class="text-center">
       <p class="text-sm font-medium">Déposez vos photos ici ou cliquez pour parcourir</p>
-      <p class="text-xs text-muted-foreground mt-1">Formats acceptés : JPEG, PNG et autres formats d'image</p>
+      <p class="text-xs text-muted-foreground mt-1">
+        Formats acceptés : JPEG, PNG et autres formats d'image
+      </p>
     </div>
     <input
       ref="fileInputRef"

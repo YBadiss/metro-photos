@@ -89,7 +89,9 @@ const entranceGroups = computed<EntranceGroup[]>(() => {
       byDate.get(sortKey)!.photos.push(photo);
     }
 
-    const dateGroups = Array.from(byDate.values()).sort((a, b) => b.sortKey.localeCompare(a.sortKey));
+    const dateGroups = Array.from(byDate.values()).sort((a, b) =>
+      b.sortKey.localeCompare(a.sortKey),
+    );
     return { accessId: access.id, entranceName: access.name, dateGroups };
   });
 
@@ -149,7 +151,10 @@ watch(
           {{ stationInfo.accesses.length }} entrée{{ stationInfo.accesses.length > 1 ? "s" : "" }}
         </p>
       </div>
-      <button class="p-1 hover:bg-muted rounded transition-colors flex-shrink-0" @click="emit('close')">
+      <button
+        class="p-1 hover:bg-muted rounded transition-colors flex-shrink-0"
+        @click="emit('close')"
+      >
         <X class="w-4 h-4 text-muted-foreground" />
       </button>
     </div>
@@ -192,7 +197,10 @@ watch(
           </div>
 
           <!-- No photos for this entrance -->
-          <div v-if="group.dateGroups.length === 0" class="flex items-center gap-2 px-3 py-3 text-muted-foreground">
+          <div
+            v-if="group.dateGroups.length === 0"
+            class="flex items-center gap-2 px-3 py-3 text-muted-foreground"
+          >
             <ImageOff class="w-4 h-4 flex-shrink-0" />
             <p class="text-xs">Aucune photo</p>
           </div>

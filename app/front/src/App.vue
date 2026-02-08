@@ -83,7 +83,12 @@ function handleGalleryPhotoSelected(photo: LatestPhoto) {
           let distanceMeters = 0;
           if (photo.latitude != null && photo.longitude != null) {
             distanceMeters = Math.round(
-              haversineMeters(photo.latitude, photo.longitude, access.geo_point.lat, access.geo_point.lon),
+              haversineMeters(
+                photo.latitude,
+                photo.longitude,
+                access.geo_point.lat,
+                access.geo_point.lon,
+              ),
             );
           }
           matchedEntrance = {
@@ -167,14 +172,22 @@ watch(selectedZoneId, () => {
         >
           <div class="map-layout">
             <div class="map-wrapper">
-              <MetroMap ref="metroMapRef" :zones="zones" @station-clicked="handleStationClicked" @entrance-clicked="handleEntranceClicked" />
+              <MetroMap
+                ref="metroMapRef"
+                :zones="zones"
+                @station-clicked="handleStationClicked"
+                @entrance-clicked="handleEntranceClicked"
+              />
             </div>
             <div v-if="selectedZoneId" class="map-sidebar">
               <EntrancePhotosSidebar
                 :zone-id="selectedZoneId"
                 :filtered-access-id="selectedAccessId"
                 :zones="zones"
-                @close="selectedZoneId = null; selectedAccessId = null"
+                @close="
+                  selectedZoneId = null;
+                  selectedAccessId = null;
+                "
               />
             </div>
           </div>

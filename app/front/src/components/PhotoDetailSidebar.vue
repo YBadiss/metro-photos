@@ -128,13 +128,20 @@ async function validate() {
     <!-- Content -->
     <div class="flex-1 overflow-y-auto">
       <!-- Preview image -->
-      <div class="border-b relative group" :class="upload.photoId ? 'cursor-pointer' : ''" @click="upload.photoId && (showLightbox = true)">
+      <div
+        class="border-b relative group"
+        :class="upload.photoId ? 'cursor-pointer' : ''"
+        @click="upload.photoId && (showLightbox = true)"
+      >
         <img
           :src="upload.result?.blurredUrl"
           :alt="upload.file.name"
           class="w-full object-contain max-h-40 bg-black/5"
         />
-        <div v-if="upload.photoId" class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+        <div
+          v-if="upload.photoId"
+          class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+        >
           <ZoomIn class="w-6 h-6 text-white" />
         </div>
       </div>

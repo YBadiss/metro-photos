@@ -63,12 +63,8 @@
           "name": "accesses_zone_id_zones_id_fk",
           "tableFrom": "accesses",
           "tableTo": "zones",
-          "columnsFrom": [
-            "zone_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["zone_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -195,12 +191,8 @@
           "name": "photos_access_id_accesses_id_fk",
           "tableFrom": "photos",
           "tableTo": "accesses",
-          "columnsFrom": [
-            "access_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["access_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -234,12 +226,8 @@
           "name": "zone_lines_zone_id_zones_id_fk",
           "tableFrom": "zone_lines",
           "tableTo": "zones",
-          "columnsFrom": [
-            "zone_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["zone_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -247,12 +235,8 @@
           "name": "zone_lines_line_id_lines_id_fk",
           "tableFrom": "zone_lines",
           "tableTo": "lines",
-          "columnsFrom": [
-            "line_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["line_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -260,10 +244,7 @@
       "compositePrimaryKeys": {
         "zone_lines_zone_id_line_id_pk": {
           "name": "zone_lines_zone_id_line_id_pk",
-          "columns": [
-            "zone_id",
-            "line_id"
-          ]
+          "columns": ["zone_id", "line_id"]
         }
       },
       "uniqueConstraints": {},

@@ -1,7 +1,16 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { Progress } from "@/components/ui/progress";
-import { XCircle, Image, X, Check, MapPin, ShieldCheck, CheckCircle2, ScanEye } from "lucide-vue-next";
+import {
+  XCircle,
+  Image,
+  X,
+  Check,
+  MapPin,
+  ShieldCheck,
+  CheckCircle2,
+  ScanEye,
+} from "lucide-vue-next";
 import type { FileUpload } from "@/types/uploads";
 import UploadDropZone from "./UploadDropZone.vue";
 
@@ -200,7 +209,9 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
       <!-- Summary bar -->
       <div class="flex items-center justify-between px-4 py-2 border-b flex-shrink-0">
         <div class="flex gap-3 text-xs flex-wrap">
-          <span v-if="pendingCount" class="text-muted-foreground">{{ pendingCount }} en attente</span>
+          <span v-if="pendingCount" class="text-muted-foreground"
+            >{{ pendingCount }} en attente</span
+          >
           <span v-if="uploadingCount" class="text-primary font-medium"
             >{{ uploadingCount }} en cours d'envoi</span
           >
@@ -308,7 +319,10 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
                   <XCircle class="w-5 h-5 text-destructive" />
                 </div>
 
-                <p v-if="upload.status === 'error'" class="text-xs text-destructive text-center leading-tight">
+                <p
+                  v-if="upload.status === 'error'"
+                  class="text-xs text-destructive text-center leading-tight"
+                >
                   {{ upload.error }}
                 </p>
                 <p v-else class="text-xs text-muted-foreground truncate w-full text-center">

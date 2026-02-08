@@ -41,9 +41,7 @@ export const processPhotoTask = task({
     metadata.set("stage", "analyzing_location");
     logger.info("Stage: analyzing location (EXIF extraction)");
 
-    const exifResult = await python.runScript("./scripts/extract_exif.py", [
-      downloadUrl,
-    ]);
+    const exifResult = await python.runScript("./scripts/extract_exif.py", [downloadUrl]);
 
     if (exifResult.stderr) {
       logger.info("EXIF extraction stderr", { stderr: exifResult.stderr });
@@ -94,7 +92,9 @@ export const processPhotoTask = task({
 
       // Retry once if below threshold, take the max
       if (validationConfidence < CONFIDENCE_THRESHOLD) {
-        logger.info("First validation below threshold, retrying", { confidence: validationConfidence });
+        logger.info("First validation below threshold, retrying", {
+          confidence: validationConfidence,
+        });
         const secondConfidence = await callValidation(downloadUrl);
         validationConfidence = Math.max(validationConfidence, secondConfidence);
       }
