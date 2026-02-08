@@ -8,7 +8,7 @@ import {
 } from "./s3";
 import { tasks, runs } from "@trigger.dev/sdk";
 import type { detectFacesTask } from "./trigger/detectFaces";
-import type { processPhotoTask, ProcessPhotoResult } from "./trigger/processPhoto";
+import type { processPhotoTask, ProcessPhotoResult, ExifData } from "./trigger/processPhoto";
 import { db } from "./db";
 import {
   zones as zonesTable,
@@ -153,6 +153,25 @@ async function loadZonesFromDb(): Promise<Zone[]> {
 // Cache zones in memory after first load
 let zonesMetro: Zone[] | null = null;
 
+// Track pending processing runs for async status polling
+interface PendingRun {
+  imageKey: string;
+  processedKey: string;
+}
+
+interface FinalizedResult {
+  photoId: number;
+  blurredUrl: string;
+  blurredKey: string;
+  facesCount: number;
+  blurred: boolean;
+  exif: ExifData | null;
+  matchedEntrance: MatchedEntrance | null;
+}
+
+const pendingRuns = new Map<string, PendingRun>();
+const finalizedResults = new Map<string, FinalizedResult>();
+
 app.get("/zones_metro", async (_req, res) => {
   if (!zonesMetro) {
     zonesMetro = await loadZonesFromDb();
@@ -225,7 +244,7 @@ app.post("/detect_faces", async (req, res) => {
   }
 });
 
-// Process a photo: detect faces, blur them, upload result
+// Trigger photo processing (async - returns runId immediately)
 app.post("/process-photo", async (req, res) => {
   try {
     const { imageKey, detSize } = req.body;
@@ -253,64 +272,109 @@ app.post("/process-photo", async (req, res) => {
 
     console.log("Process-photo task triggered with ID:", handle.id);
 
-    // Poll for completion
-    const run = await runs.poll(handle, { pollIntervalMs: 1000 });
+    // Store context for finalization later
+    pendingRuns.set(handle.id, { imageKey, processedKey });
 
-    if (run.status !== "COMPLETED") {
-      console.error("Photo processing task failed:", run.error);
-      res.status(500).json({ error: "Photo processing failed", details: run.error });
+    res.json({ runId: handle.id });
+  } catch (error) {
+    console.error("Error triggering photo processing:", error);
+    res.status(500).json({ error: "Failed to trigger photo processing" });
+  }
+});
+
+// Poll processing status for a given run
+app.get("/process-photo/:runId/status", async (req, res) => {
+  try {
+    const { runId } = req.params;
+
+    // Check if already finalized
+    const cached = finalizedResults.get(runId);
+    if (cached) {
+      res.json({ stage: "finalized", result: cached });
       return;
     }
 
-    // Generate a download URL for the blurred image
-    const blurredUrl = await generateDownloadUrl(processedKey);
-
-    const output = run.output as ProcessPhotoResult;
-
-    console.log("Photo processing result:", JSON.stringify(output, null, 2));
-
-    // Delete the original upload from S3 (only keep the blurred version)
-    await deleteObject(imageKey);
-
-    // Match GPS coordinates to nearest metro entrance
-    let matchedEntrance: MatchedEntrance | null = null;
-    if (output.exif?.latitude != null && output.exif?.longitude != null) {
-      if (!zonesMetro) {
-        zonesMetro = await loadZonesFromDb();
-      }
-      matchedEntrance = findNearestEntrance(
-        output.exif.latitude,
-        output.exif.longitude,
-        zonesMetro,
-      );
+    // Check we have context for this run
+    const pending = pendingRuns.get(runId);
+    if (!pending) {
+      res.status(404).json({ error: "Run not found" });
+      return;
     }
 
-    // Always persist photo metadata
-    const [insertedPhoto] = await db
-      .insert(photosTable)
-      .values({
-        s3Key: processedKey,
-        accessId: matchedEntrance?.entrance.id ?? null,
-        latitude: output.exif?.latitude ?? null,
-        longitude: output.exif?.longitude ?? null,
-        takenAt: output.exif?.dateTime ? new Date(output.exif.dateTime) : null,
-        camera: output.exif?.camera ?? null,
-        status: "pending",
-      })
-      .returning();
+    // Retrieve run status from trigger.dev
+    const run = await runs.retrieve(runId);
 
-    res.json({
-      photoId: insertedPhoto.id,
-      blurredKey: processedKey,
-      blurredUrl,
-      facesCount: output.faces_count,
-      blurred: output.blurred,
-      exif: output.exif,
-      matchedEntrance,
-    });
+    if (run.status === "COMPLETED") {
+      // Perform finalization
+      const output = run.output as ProcessPhotoResult;
+
+      console.log("Photo processing result:", JSON.stringify(output, null, 2));
+
+      // Generate a download URL for the blurred image
+      const blurredUrl = await generateDownloadUrl(pending.processedKey);
+
+      // Delete the original upload from S3 (only keep the blurred version)
+      await deleteObject(pending.imageKey);
+
+      // Match GPS coordinates to nearest metro entrance
+      let matchedEntrance: MatchedEntrance | null = null;
+      if (output.exif?.latitude != null && output.exif?.longitude != null) {
+        if (!zonesMetro) {
+          zonesMetro = await loadZonesFromDb();
+        }
+        matchedEntrance = findNearestEntrance(
+          output.exif.latitude,
+          output.exif.longitude,
+          zonesMetro,
+        );
+      }
+
+      // Always persist photo metadata
+      const [insertedPhoto] = await db
+        .insert(photosTable)
+        .values({
+          s3Key: pending.processedKey,
+          accessId: matchedEntrance?.entrance.id ?? null,
+          latitude: output.exif?.latitude ?? null,
+          longitude: output.exif?.longitude ?? null,
+          takenAt: output.exif?.dateTime ? new Date(output.exif.dateTime) : null,
+          camera: output.exif?.camera ?? null,
+          status: "pending",
+        })
+        .returning();
+
+      const result: FinalizedResult = {
+        photoId: insertedPhoto.id,
+        blurredKey: pending.processedKey,
+        blurredUrl,
+        facesCount: output.faces_count,
+        blurred: output.blurred,
+        exif: output.exif ?? null,
+        matchedEntrance,
+      };
+
+      // Cache result and clean up pending context
+      finalizedResults.set(runId, result);
+      pendingRuns.delete(runId);
+
+      res.json({ stage: "finalized", result });
+      return;
+    }
+
+    if (run.status === "FAILED" || run.status === "CANCELED" || run.status === "CRASHED") {
+      pendingRuns.delete(runId);
+      res.json({ stage: "error", error: "Processing failed" });
+      return;
+    }
+
+    // Still running — read metadata for current stage
+    const runMetadata = (run.metadata ?? {}) as Record<string, unknown>;
+    const stage = (runMetadata.stage as string) ?? "queued";
+
+    res.json({ stage });
   } catch (error) {
-    console.error("Error processing photo:", error);
-    res.status(500).json({ error: "Failed to process photo" });
+    console.error("Error checking process status:", error);
+    res.status(500).json({ error: "Failed to check processing status" });
   }
 });
 

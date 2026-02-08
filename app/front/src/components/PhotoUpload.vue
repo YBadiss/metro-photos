@@ -1,7 +1,15 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { Progress } from "@/components/ui/progress";
-import { XCircle, Image, X, Check } from "lucide-vue-next";
+import {
+  XCircle,
+  Image,
+  X,
+  Check,
+  MapPin,
+  ShieldCheck,
+  CheckCircle2,
+} from "lucide-vue-next";
 import type { FileUpload } from "@/types/uploads";
 import UploadDropZone from "./UploadDropZone.vue";
 
@@ -105,26 +113,52 @@ async function processQueue() {
 }
 
 async function processPhoto(upload: FileUpload) {
-  const response = await fetch(`${API_URL}/process-photo`, {
+  // Step 1: Trigger processing (returns immediately with runId)
+  const triggerResponse = await fetch(`${API_URL}/process-photo`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ imageKey: upload.key }),
   });
 
-  if (!response.ok) {
-    throw new Error("Face processing failed");
+  if (!triggerResponse.ok) {
+    throw new Error("Failed to start processing");
   }
 
-  const data = await response.json();
-  upload.photoId = data.photoId;
-  upload.result = {
-    blurredUrl: data.blurredUrl,
-    blurredKey: data.blurredKey,
-    facesCount: data.facesCount,
-    exif: data.exif,
-    matchedEntrance: data.matchedEntrance,
-  };
-  upload.status = "processed";
+  const { runId } = await triggerResponse.json();
+  upload.runId = runId;
+  upload.processingStage = "queued";
+
+  // Step 2: Poll for status updates
+  while (true) {
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+
+    const statusResponse = await fetch(`${API_URL}/process-photo/${runId}/status`);
+    if (!statusResponse.ok) {
+      throw new Error("Failed to check processing status");
+    }
+
+    const statusData = await statusResponse.json();
+
+    if (statusData.stage === "error") {
+      throw new Error(statusData.error || "Processing failed");
+    }
+
+    if (statusData.stage === "finalized") {
+      upload.photoId = statusData.result.photoId;
+      upload.result = {
+        blurredUrl: statusData.result.blurredUrl,
+        blurredKey: statusData.result.blurredKey,
+        facesCount: statusData.result.facesCount,
+        exif: statusData.result.exif,
+        matchedEntrance: statusData.result.matchedEntrance,
+      };
+      upload.status = "processed";
+      return;
+    }
+
+    // Update the granular processing stage
+    upload.processingStage = statusData.stage;
+  }
 }
 
 function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
@@ -249,7 +283,20 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
                   v-else-if="upload.status === 'processing'"
                   class="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center"
                 >
+                  <MapPin
+                    v-if="upload.processingStage === 'analyzing_location'"
+                    class="w-5 h-5 text-amber-600 animate-pulse"
+                  />
+                  <ShieldCheck
+                    v-else-if="upload.processingStage === 'blurring_faces'"
+                    class="w-5 h-5 text-amber-600 animate-pulse"
+                  />
+                  <CheckCircle2
+                    v-else-if="upload.processingStage === 'finalizing'"
+                    class="w-5 h-5 text-amber-600 animate-pulse"
+                  />
                   <div
+                    v-else
                     class="w-5 h-5 border-2 border-amber-600 border-t-transparent rounded-full animate-spin"
                   />
                 </div>
@@ -275,7 +322,16 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
                   {{ upload.progress }}%
                 </p>
                 <p v-else-if="upload.status === 'processing'" class="text-xs text-amber-600">
-                  Processing...
+                  <template v-if="upload.processingStage === 'analyzing_location'"
+                    >Analyzing location...</template
+                  >
+                  <template v-else-if="upload.processingStage === 'blurring_faces'"
+                    >Blurring faces...</template
+                  >
+                  <template v-else-if="upload.processingStage === 'finalizing'"
+                    >Finalizing...</template
+                  >
+                  <template v-else>Starting...</template>
                 </p>
                 <p
                   v-else-if="upload.status === 'error'"

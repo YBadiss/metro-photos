@@ -20,13 +20,17 @@ export interface ProcessingResult {
   matchedEntrance?: MatchedEntrance | null;
 }
 
+export type ProcessingStage = "queued" | "analyzing_location" | "blurring_faces" | "finalizing";
+
 export interface FileUpload {
   id: string;
   file: File;
   status: "pending" | "uploading" | "processing" | "processed" | "validated" | "error";
+  processingStage?: ProcessingStage;
   progress: number;
   error?: string;
   key?: string;
+  runId?: string;
   result?: ProcessingResult;
   photoId?: number;
 }
