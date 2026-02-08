@@ -25,3 +25,6 @@ dist-ssr
 
 .env
 .trigger/tmp
+
+# Data files (now in DB)
+data/zones_metro.json

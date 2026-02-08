@@ -1,11 +1,17 @@
 import "./env"; // Must be first to load env vars before other imports
 import express from "express";
-import { readFileSync } from "fs";
-import { join } from "path";
 import { generateUploadUrl, generateUploadUrlForKey, generateDownloadUrl } from "./s3";
 import { tasks, runs } from "@trigger.dev/sdk";
 import type { detectFacesTask } from "./trigger/detectFaces";
 import type { processPhotoTask, ProcessPhotoResult } from "./trigger/processPhoto";
+import { db } from "./db";
+import {
+  zones as zonesTable,
+  accesses as accessesTable,
+  lines as linesTable,
+  zoneLines,
+} from "./db/schema";
+import { eq } from "drizzle-orm";
 
 // Metro data types (matching front/src/types/metro.ts)
 interface GeoPoint {
@@ -90,14 +96,61 @@ app.use((_req, res, next) => {
 });
 app.use(express.json());
 
-// Load zones_metro.json from data folder
-// Use process.cwd() because:
-// - Local: bun runs from app/back/, data is at ./data/
-// - Prod: pm2 runs from deploy dir, data is at ./data/
-const dataPath = join(process.cwd(), "data/zones_metro.json");
-const zonesMetro: Zone[] = JSON.parse(readFileSync(dataPath, "utf-8"));
+async function loadZonesFromDb(): Promise<Zone[]> {
+  const allZones = await db.select().from(zonesTable);
+  const allAccesses = await db.select().from(accessesTable);
+  const allZoneLines = await db
+    .select({
+      zoneId: zoneLines.zoneId,
+      id: linesTable.id,
+      name: linesTable.name,
+      color: linesTable.color,
+      iconUrl: linesTable.iconUrl,
+      iconFilename: linesTable.iconFilename,
+    })
+    .from(zoneLines)
+    .innerJoin(linesTable, eq(zoneLines.lineId, linesTable.id));
 
-app.get("/zones_metro", (_req, res) => {
+  const accessesByZone = new Map<string, Access[]>();
+  for (const a of allAccesses) {
+    const list = accessesByZone.get(a.zoneId) ?? [];
+    list.push({
+      id: a.id,
+      name: a.name,
+      short_name: a.shortName,
+      geo_point: { lon: a.lon, lat: a.lat },
+    });
+    accessesByZone.set(a.zoneId, list);
+  }
+
+  const linesByZone = new Map<string, Line[]>();
+  for (const zl of allZoneLines) {
+    const list = linesByZone.get(zl.zoneId) ?? [];
+    list.push({
+      id: zl.id,
+      name: zl.name,
+      color: zl.color,
+      icon_url: zl.iconUrl,
+    });
+    linesByZone.set(zl.zoneId, list);
+  }
+
+  return allZones.map((z) => ({
+    id: z.id,
+    name: z.name,
+    town: z.town,
+    accesses: accessesByZone.get(z.id) ?? [],
+    lines: linesByZone.get(z.id) ?? [],
+  }));
+}
+
+// Cache zones in memory after first load
+let zonesMetro: Zone[] | null = null;
+
+app.get("/zones_metro", async (_req, res) => {
+  if (!zonesMetro) {
+    zonesMetro = await loadZonesFromDb();
+  }
   res.json(zonesMetro);
 });
 
@@ -213,6 +266,9 @@ app.post("/process-photo", async (req, res) => {
     // Match GPS coordinates to nearest metro entrance
     let matchedEntrance: MatchedEntrance | null = null;
     if (output.exif?.latitude != null && output.exif?.longitude != null) {
+      if (!zonesMetro) {
+        zonesMetro = await loadZonesFromDb();
+      }
       matchedEntrance = findNearestEntrance(
         output.exif.latitude,
         output.exif.longitude,

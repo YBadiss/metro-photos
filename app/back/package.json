@@ -17,7 +17,11 @@
     "lint:fix": "oxlint --fix",
     "fmt": "oxfmt",
     "fmt:check": "oxfmt --check",
-    "check": "oxlint && oxfmt --check && tsc --noEmit"
+    "check": "oxlint && oxfmt --check && tsc --noEmit",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "bun src/db/migrate.ts",
+    "db:push": "drizzle-kit push",
+    "db:seed": "bun src/db/seed.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.985.0",
@@ -25,13 +29,16 @@
     "@trigger.dev/python": "^4.3.3",
     "@trigger.dev/sdk": "^4.3.3",
     "dotenv": "^17.2.4",
+    "drizzle-orm": "^0.45.1",
     "express": "^5.2.1",
+    "postgres": "^3.4.8",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^22.15.0",
     "concurrently": "^9.2.1",
+    "drizzle-kit": "^0.31.8",
     "oxfmt": "^0.28.0",
     "oxlint": "^1.43.0",
     "trigger.dev": "^4.3.3",

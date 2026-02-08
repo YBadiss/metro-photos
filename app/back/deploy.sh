@@ -15,9 +15,8 @@ DEPLOY_DIR="/var/www/api.metro-boulot.photos"
 # Create target directory with proper permissions
 ssh "${SSH_OPTIONS[@]}" root@167.71.143.97 "mkdir -p ${DEPLOY_DIR}-${timestamp} && chmod 755 ${DEPLOY_DIR}-${timestamp}"
 
-# Deploy the built files and data
+# Deploy the built files
 scp "${SSH_OPTIONS[@]}" -r dist/* root@167.71.143.97:${DEPLOY_DIR}-${timestamp}/
-scp "${SSH_OPTIONS[@]}" -r data root@167.71.143.97:${DEPLOY_DIR}-${timestamp}/
 scp "${SSH_OPTIONS[@]}" package.json bun.lock root@167.71.143.97:${DEPLOY_DIR}-${timestamp}/
 
 # Copy production env file
@@ -32,10 +31,14 @@ if [ -f .env.production ]; then
         echo "TRIGGER_API_KEY found in shell env, updating .env.production..."
         sed -i "s/TRIGGER_SECRET_KEY=.*/TRIGGER_SECRET_KEY=$TRIGGER_API_KEY/" .env.production
     fi
+    if [ -n "$DATABASE_URL" ]; then
+        echo "DATABASE_URL found in shell env, updating .env.production..."
+        sed -i "s|DATABASE_URL=.*|DATABASE_URL=$DATABASE_URL|" .env.production
+    fi
     scp "${SSH_OPTIONS[@]}" .env.production root@167.71.143.97:${DEPLOY_DIR}-${timestamp}/.env
 fi
 
-# Install production dependencies and update symlink
+# Install production dependencies
 ssh "${SSH_OPTIONS[@]}" root@167.71.143.97 "cd ${DEPLOY_DIR}-${timestamp} && bun install --frozen-lockfile --production"
 
 # Create a new symlink (remove old one if exists)

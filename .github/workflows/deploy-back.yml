@@ -35,8 +35,10 @@ jobs:
           S3_SECRET_ACCESS_KEY: ${{ secrets.S3_SECRET_ACCESS_KEY }}
           TRIGGER_DEPLOY_KEY: ${{ secrets.TRIGGER_DEPLOY_KEY }}
           TRIGGER_API_KEY: ${{ secrets.TRIGGER_API_KEY }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           cd app/back
           bun install --frozen-lockfile
           bun run build
+          bun run db:migrate
           bun run deploy
