@@ -85,7 +85,7 @@ function computeStationCenter(zone: Zone): [number, number] {
 
 function stationTooltipContent(sd: StationData): string {
   const count = sd.zone.accesses.length;
-  const entranceText = count === 1 ? "1 entrance" : `${count} entrances`;
+  const entranceText = count === 1 ? "1 entrée" : `${count} entrées`;
 
   const lineIcons = sd.zone.lines
     .filter((l) => l.icon_url)

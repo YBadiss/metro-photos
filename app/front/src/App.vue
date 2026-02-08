@@ -4,9 +4,10 @@ import MetroMap from "./components/MetroMap.vue";
 import PhotoUpload from "./components/PhotoUpload.vue";
 import PhotoDetailSidebar from "./components/PhotoDetailSidebar.vue";
 import EntrancePhotosSidebar from "./components/EntrancePhotosSidebar.vue";
+import LatestPhotos from "./components/LatestPhotos.vue";
 import InfoModal from "./components/InfoModal.vue";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Map, Upload } from "lucide-vue-next";
+import { Map, Upload, Images } from "lucide-vue-next";
 import type { Zone } from "./types/metro";
 import type { FileUpload } from "./types/uploads";
 
@@ -74,29 +75,30 @@ watch(selectedAccessId, () => {
 
 <template>
   <div class="app">
-    <header class="header">
-      <h1>Metro, Boulot, Photos!</h1>
-      <div class="header-buttons">
-        <button class="header-button" aria-label="About this site" @click="isInfoModalOpen = true">
-          ?
-        </button>
-      </div>
-    </header>
-
-    <div v-if="loading" class="loading">Loading metro data...</div>
-    <div v-else-if="error" class="error">Error: {{ error }}</div>
+    <div v-if="loading" class="loading">Chargement des données métro...</div>
+    <div v-else-if="error" class="error">Erreur : {{ error }}</div>
     <template v-else>
       <Tabs v-model="activeTab" class="tabs-root">
-        <TabsList class="tabs-list">
-          <TabsTrigger value="map" class="tabs-trigger">
-            <Map class="w-4 h-4" />
-            Map
-          </TabsTrigger>
-          <TabsTrigger value="uploads" class="tabs-trigger">
-            <Upload class="w-4 h-4" />
-            Uploads
-          </TabsTrigger>
-        </TabsList>
+        <div class="app-bar">
+          <span class="app-title">Métro, Boulot, Photos&nbsp;!</span>
+          <TabsList class="tabs-list">
+            <TabsTrigger value="map" class="tabs-trigger">
+              <Map class="w-4 h-4" />
+              <span class="tab-label">Carte</span>
+            </TabsTrigger>
+            <TabsTrigger value="uploads" class="tabs-trigger">
+              <Upload class="w-4 h-4" />
+              <span class="tab-label">Ajout Photos</span>
+            </TabsTrigger>
+            <TabsTrigger value="gallery" class="tabs-trigger">
+              <Images class="w-4 h-4" />
+              <span class="tab-label">Derniers Ajouts</span>
+            </TabsTrigger>
+          </TabsList>
+          <button class="info-button" aria-label="À propos" @click="isInfoModalOpen = true">
+            ?
+          </button>
+        </div>
 
         <!-- Map tab: forceMount keeps Leaflet alive, hidden via CSS -->
         <TabsContent
@@ -117,6 +119,11 @@ watch(selectedAccessId, () => {
               />
             </div>
           </div>
+        </TabsContent>
+
+        <!-- Gallery tab -->
+        <TabsContent value="gallery" class="tab-content">
+          <LatestPhotos :zones="zones" />
         </TabsContent>
 
         <!-- Uploads tab -->
@@ -148,55 +155,46 @@ watch(selectedAccessId, () => {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  padding: 1.25rem;
-  gap: 1.25rem;
-}
-
-.header {
-  text-align: center;
-  flex-shrink: 0;
-  position: relative;
-}
-
-.header h1 {
-  font-size: 3rem;
-  font-weight: 700;
-  color: hsl(var(--foreground));
-  letter-spacing: -0.025em;
-}
-
-.header-buttons {
-  position: absolute;
-  top: 50%;
-  right: 0;
-  transform: translateY(-50%);
-  display: flex;
+  padding: 0.5rem;
   gap: 0.5rem;
 }
 
-.header-button {
-  width: 2.5rem;
-  height: 2.5rem;
+.app-bar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.app-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  color: hsl(var(--foreground));
+  white-space: nowrap;
+  letter-spacing: -0.025em;
+}
+
+.info-button {
+  width: 1.75rem;
+  height: 1.75rem;
   border-radius: 9999px;
   background: hsl(var(--background));
   border: 2px solid hsl(var(--border));
   color: hsl(var(--muted-foreground));
-  font-size: 1.5rem;
+  font-size: 1rem;
   font-weight: 700;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  flex-shrink: 0;
 }
 
-.header-button:hover {
+.info-button:hover {
   background: hsl(var(--foreground));
   color: hsl(var(--background));
   border-color: hsl(var(--foreground));
-  transform: scale(1.1);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .tabs-root {
@@ -207,7 +205,9 @@ watch(selectedAccessId, () => {
 }
 
 .tabs-list {
-  flex-shrink: 0;
+  flex: 1;
+  display: flex;
+  justify-content: center;
 }
 
 .tabs-trigger {
@@ -222,6 +222,20 @@ watch(selectedAccessId, () => {
   border-radius: 0.75rem;
   overflow: hidden;
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+@media (max-width: 640px) {
+  .app-title {
+    display: none;
+  }
+
+  .tab-label {
+    display: none;
+  }
+
+  .app-bar {
+    gap: 0.5rem;
+  }
 }
 
 .tab-content.hidden {

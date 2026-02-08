@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
-import { ChevronLeft, Train, MapPin, Clock, Camera, Check } from "lucide-vue-next";
+import { ChevronLeft, Train, MapPin, Clock, Camera, Check, ZoomIn } from "lucide-vue-next";
 import type { Zone } from "../types/metro";
 import type { FileUpload } from "../types/uploads";
 import { haversineMeters } from "@/utils/coordinates";
 import MiniMap from "./MiniMap.vue";
+import PhotoLightbox from "./PhotoLightbox.vue";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
@@ -19,6 +20,7 @@ const emit = defineEmits<{
 }>();
 
 const validating = ref(false);
+const showLightbox = ref(false);
 
 // Track the currently assigned access ID (user can reassign via mini map)
 const currentAccessId = ref<string | null>(
@@ -126,12 +128,15 @@ async function validate() {
     <!-- Content -->
     <div class="flex-1 overflow-y-auto">
       <!-- Preview image -->
-      <div class="border-b">
+      <div class="border-b relative group" :class="upload.photoId ? 'cursor-pointer' : ''" @click="upload.photoId && (showLightbox = true)">
         <img
           :src="upload.result?.blurredUrl"
           :alt="upload.file.name"
           class="w-full object-contain max-h-40 bg-black/5"
         />
+        <div v-if="upload.photoId" class="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+          <ZoomIn class="w-6 h-6 text-white" />
+        </div>
       </div>
 
       <div class="p-4 flex flex-col gap-4">
@@ -139,11 +144,11 @@ async function validate() {
         <div v-if="currentEntrance" class="flex items-start gap-3">
           <Train class="w-5 h-5 text-primary mt-0.5 flex-shrink-0" />
           <div class="min-w-0">
-            <p class="text-xs text-muted-foreground">Nearest Metro Entrance</p>
+            <p class="text-xs text-muted-foreground">Entrée de métro la plus proche</p>
             <p class="font-medium">{{ currentEntrance.station.name }}</p>
             <p class="text-sm">{{ currentEntrance.entrance.name }}</p>
             <p class="text-xs text-muted-foreground mt-0.5">
-              {{ currentEntrance.distanceMeters }}m away &middot;
+              a {{ currentEntrance.distanceMeters }}m &middot;
               {{ currentEntrance.station.town }}
             </p>
             <div v-if="currentEntrance.lines.length" class="flex gap-1 mt-1.5">
@@ -159,7 +164,7 @@ async function validate() {
         </div>
         <div v-else class="flex items-center gap-3">
           <Train class="w-5 h-5 text-muted-foreground flex-shrink-0" />
-          <p class="text-sm text-muted-foreground italic">No metro entrance nearby</p>
+          <p class="text-sm text-muted-foreground italic">Aucune entrée de métro à proximité</p>
         </div>
 
         <!-- Mini Map -->
@@ -175,7 +180,7 @@ async function validate() {
         <div v-if="hasGps" class="flex items-start gap-3">
           <MapPin class="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
           <div>
-            <p class="text-xs text-muted-foreground">Location</p>
+            <p class="text-xs text-muted-foreground">Localisation</p>
             <p class="text-sm">
               {{ formatCoord(upload.result!.exif!.latitude!, upload.result!.exif!.longitude!) }}
             </p>
@@ -184,8 +189,8 @@ async function validate() {
         <div v-else class="flex items-center gap-3">
           <MapPin class="w-5 h-5 text-muted-foreground flex-shrink-0" />
           <div>
-            <p class="text-xs text-muted-foreground">Location</p>
-            <p class="text-sm text-muted-foreground italic">No GPS data</p>
+            <p class="text-xs text-muted-foreground">Localisation</p>
+            <p class="text-sm text-muted-foreground italic">Pas de donnees GPS</p>
           </div>
         </div>
 
@@ -193,15 +198,15 @@ async function validate() {
         <div v-if="upload.result?.exif?.dateTime" class="flex items-start gap-3">
           <Clock class="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
           <div>
-            <p class="text-xs text-muted-foreground">Taken</p>
+            <p class="text-xs text-muted-foreground">Prise le</p>
             <p class="text-sm">{{ formatDateTime(upload.result.exif.dateTime) }}</p>
           </div>
         </div>
         <div v-else class="flex items-center gap-3">
           <Clock class="w-5 h-5 text-muted-foreground flex-shrink-0" />
           <div>
-            <p class="text-xs text-muted-foreground">Taken</p>
-            <p class="text-sm text-muted-foreground italic">No date data</p>
+            <p class="text-xs text-muted-foreground">Prise le</p>
+            <p class="text-sm text-muted-foreground italic">Pas de date</p>
           </div>
         </div>
 
@@ -209,7 +214,7 @@ async function validate() {
         <div v-if="upload.result?.exif?.camera" class="flex items-start gap-3">
           <Camera class="w-5 h-5 text-muted-foreground mt-0.5 flex-shrink-0" />
           <div>
-            <p class="text-xs text-muted-foreground">Camera</p>
+            <p class="text-xs text-muted-foreground">Appareil</p>
             <p class="text-sm">{{ upload.result.exif.camera }}</p>
           </div>
         </div>
@@ -224,7 +229,7 @@ async function validate() {
         disabled
       >
         <Check class="w-4 h-4" />
-        Validated
+        Validee
       </button>
       <button
         v-else
@@ -238,8 +243,14 @@ async function validate() {
         @click="validate"
       >
         <Check class="w-4 h-4" />
-        {{ validating ? "Validating..." : "Validate" }}
+        {{ validating ? "Validation..." : "Valider" }}
       </button>
     </div>
+
+    <PhotoLightbox
+      v-if="showLightbox && upload.photoId"
+      :photo-id="upload.photoId"
+      @close="showLightbox = false"
+    />
   </div>
 </template>

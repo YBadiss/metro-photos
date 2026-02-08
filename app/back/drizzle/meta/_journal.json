@@ -22,6 +22,13 @@
       "when": 1770561896778,
       "tag": "0002_boring_toad",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1770569582719,
+      "tag": "0003_pale_hairball",
+      "breakpoints": true
     }
   ]
 }

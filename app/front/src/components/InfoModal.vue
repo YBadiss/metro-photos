@@ -3,36 +3,43 @@
     <Transition name="modal">
       <div v-if="isOpen" class="modal-overlay" @click="close">
         <div class="modal-content" @click.stop>
-          <button class="close-button" aria-label="Close" @click="close">×</button>
+          <button class="close-button" aria-label="Fermer" @click="close">×</button>
 
-          <h2>What is this?</h2>
+          <h2>C'est quoi ?</h2>
 
           <div class="modal-body">
             <p>
-              <i>"Metro, Boulot, Photos!"</i> is a project to document photos of all metro entrances
-              in Paris. This interactive map shows every metro station and entrance, with their
-              exact locations and the lines they serve.
+              <i>"Metro, Boulot, Photos !"</i> est un projet collaboratif pour photographier toutes
+              les bouches de métro de Paris. Cette carte interactive affiche chaque station et
+              chaque entrée, avec leur emplacement exact et les lignes desservies.
             </p>
 
             <p>
-              The metro data is compiled from
+              Les données métro proviennent des
               <a href="https://data.iledefrance-mobilites.fr"
-                >IDFM (Île-de-France Mobilités) open datasets</a
-              >, providing accurate information about Paris metro stations, their entrances, and
-              line associations.
+                >jeux de données ouverts d'IDFM (Île-de-France Mobilités)</a
+              >, avec des informations précises sur les stations, leurs entrées et les lignes
+              associées.
             </p>
 
             <p>
-              The photos come from myself, and from <b>you</b>! I will soon allow uploading pictures
-              so you can participate in building this mosaïque of our beloved city.
+              Les photos viennent de moi, et de <b>vous</b> ! Ajoutez vos propres photos
+              d'entrées de métro dans l'onglet <b>Ajout Photos</b> et participez à la
+              construction de cette mosaïque de notre belle ville.
             </p>
 
             <ul>
               <li>
-                <b>Click</b> on any entrance marker to highlight all entrances that share the same
-                metro lines.
+                <b>Carte</b> — Explorez toutes les stations et entrées de métro. Cliquez sur une
+                station pour voir ses entrées, puis sur une entrée pour voir ses photos.
               </li>
-              <li><b>Hover</b> over markers to see station and entrance details.</li>
+              <li>
+                <b>Derniers Ajouts</b> — Parcourez les dernières photos ajoutées par la communauté.
+              </li>
+              <li>
+                <b>Ajout Photos</b> — Envoyez vos propres photos d'entrées de métro. Nous les
+                associerons automatiquement à l'entrée la plus proche grâce aux données GPS.
+              </li>
             </ul>
 
             <div class="links">
@@ -73,7 +80,7 @@
                 >
                   <polyline points="9 18 15 12 9 6" />
                 </svg>
-                <span>About me</span>
+                <span>À propos</span>
               </a>
             </div>
           </div>
@@ -118,8 +125,8 @@ function close() {
 .modal-content {
   background: white;
   border-radius: 12px;
-  padding: 32px;
-  max-width: 600px;
+  padding: 24px;
+  max-width: 480px;
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
@@ -151,16 +158,17 @@ function close() {
 }
 
 h2 {
-  margin: 0 0 24px 0;
-  font-size: 28px;
+  margin: 0 0 16px 0;
+  font-size: 22px;
   font-weight: 700;
   color: #333;
 }
 
 .modal-body p {
-  margin: 0 0 16px 0;
-  line-height: 1.6;
+  margin: 0 0 12px 0;
+  line-height: 1.5;
   color: #555;
+  font-size: 0.9375rem;
 }
 
 .modal-body a {
@@ -180,11 +188,12 @@ h2 {
 }
 
 .modal-body ul li {
-  margin: 12px 0;
-  padding-left: 28px;
+  margin: 8px 0;
+  padding-left: 24px;
   position: relative;
-  line-height: 1.6;
+  line-height: 1.5;
   color: #555;
+  font-size: 0.9375rem;
 }
 
 .modal-body ul li::before {
@@ -203,24 +212,25 @@ h2 {
 
 .links {
   display: flex;
-  gap: 12px;
-  margin-top: 32px;
+  gap: 10px;
+  margin-top: 20px;
   flex-wrap: wrap;
 }
 
 .link-button {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 20px;
+  gap: 6px;
+  padding: 8px 16px;
   background-color: #f5f5f5;
   border-radius: 8px;
   text-decoration: none;
   color: #333;
   font-weight: 500;
+  font-size: 0.875rem;
   transition: all 0.2s;
   flex: 1;
-  min-width: 150px;
+  min-width: 120px;
   justify-content: center;
 }
 

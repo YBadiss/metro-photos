@@ -27,6 +27,7 @@ export interface ProcessPhotoResult {
   boxes: BoundingBox[];
   blurred: boolean;
   exif: ExifData;
+  thumbnail?: string;
 }
 
 export const processPhotoTask = task({

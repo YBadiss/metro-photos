@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, watch } from "vue";
-import { X, ImageOff, Loader2 } from "lucide-vue-next";
+import { X, ImageOff, Loader2, ZoomIn } from "lucide-vue-next";
 import type { Zone } from "../types/metro";
+import PhotoLightbox from "./PhotoLightbox.vue";
 
 const API_URL = import.meta.env.VITE_API_URL || "";
 
 interface EntrancePhoto {
   id: number;
-  url: string;
+  thumbnail: string | null;
   latitude: number | null;
   longitude: number | null;
   takenAt: string | null;
@@ -26,6 +27,7 @@ const emit = defineEmits<{
 const photos = ref<EntrancePhoto[]>([]);
 const loading = ref(false);
 const error = ref<string | null>(null);
+const lightboxPhotoId = ref<number | null>(null);
 
 const entranceInfo = computed(() => {
   for (const zone of props.zones) {
@@ -101,7 +103,7 @@ watch(
       <!-- Loading -->
       <div v-if="loading" class="flex items-center justify-center py-12 text-muted-foreground">
         <Loader2 class="w-5 h-5 animate-spin" />
-        <span class="ml-2 text-sm">Loading photos...</span>
+        <span class="ml-2 text-sm">Chargement des photos...</span>
       </div>
 
       <!-- Error -->
@@ -112,7 +114,7 @@ watch(
       <!-- Empty state -->
       <div v-else-if="photos.length === 0" class="flex flex-col items-center justify-center py-12 text-muted-foreground">
         <ImageOff class="w-8 h-8 mb-2" />
-        <p class="text-sm">No photos yet</p>
+        <p class="text-sm">Aucune photo</p>
       </div>
 
       <!-- Photo grid -->
@@ -120,15 +122,43 @@ watch(
         <div
           v-for="photo in photos"
           :key="photo.id"
-          class="aspect-square overflow-hidden rounded bg-muted"
+          class="photo-thumb aspect-square overflow-hidden rounded bg-muted relative cursor-pointer"
+          @click="lightboxPhotoId = photo.id"
         >
           <img
-            :src="photo.url"
+            v-if="photo.thumbnail"
+            :src="`data:image/jpeg;base64,${photo.thumbnail}`"
             :alt="`Photo ${photo.id}`"
             class="w-full h-full object-cover"
           />
+          <div class="photo-thumb-overlay">
+            <ZoomIn class="w-5 h-5 text-white" />
+          </div>
         </div>
       </div>
     </div>
+
+    <PhotoLightbox
+      v-if="lightboxPhotoId"
+      :photo-id="lightboxPhotoId"
+      @close="lightboxPhotoId = null"
+    />
   </div>
 </template>
+
+<style scoped>
+.photo-thumb-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.photo-thumb:hover .photo-thumb-overlay {
+  opacity: 1;
+}
+</style>

@@ -64,6 +64,7 @@ export const photos = pgTable("photos", {
   takenAt: timestamp("taken_at", { withTimezone: true }),
   camera: text("camera"),
   status: text("status").notNull().default("pending"),
+  thumbnail: text("thumbnail"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

@@ -59,8 +59,8 @@ function onFileInput(e: Event) {
   >
     <Upload class="w-10 h-10 text-muted-foreground" />
     <div class="text-center">
-      <p class="text-sm font-medium">Drop photos here or click to browse</p>
-      <p class="text-xs text-muted-foreground mt-1">Supports JPEG, PNG, and other image formats</p>
+      <p class="text-sm font-medium">Déposez vos photos ici ou cliquez pour parcourir</p>
+      <p class="text-xs text-muted-foreground mt-1">Formats acceptés : JPEG, PNG et autres formats d'image</p>
     </div>
     <input
       ref="fileInputRef"
@@ -83,7 +83,7 @@ function onFileInput(e: Event) {
     @click="fileInputRef?.click()"
   >
     <Upload class="w-4 h-4 text-muted-foreground flex-shrink-0" />
-    <p class="text-xs text-muted-foreground">Drop more photos or click to browse</p>
+    <p class="text-xs text-muted-foreground">Déposez d'autres photos ou cliquez pour parcourir</p>
     <input
       ref="fileInputRef"
       type="file"

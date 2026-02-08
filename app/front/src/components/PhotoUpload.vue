@@ -195,25 +195,25 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
       <!-- Summary bar -->
       <div class="flex items-center justify-between px-4 py-2 border-b flex-shrink-0">
         <div class="flex gap-3 text-xs flex-wrap">
-          <span v-if="pendingCount" class="text-muted-foreground">{{ pendingCount }} pending</span>
+          <span v-if="pendingCount" class="text-muted-foreground">{{ pendingCount }} en attente</span>
           <span v-if="uploadingCount" class="text-primary font-medium"
-            >{{ uploadingCount }} uploading</span
+            >{{ uploadingCount }} en cours d'envoi</span
           >
           <span v-if="processingCount" class="text-amber-600 font-medium"
-            >{{ processingCount }} processing</span
+            >{{ processingCount }} en traitement</span
           >
-          <span v-if="processedCount" class="text-green-600">{{ processedCount }} done</span>
+          <span v-if="processedCount" class="text-green-600">{{ processedCount }} terminé(s)</span>
           <span v-if="validatedCount" class="text-green-700 font-medium"
-            >{{ validatedCount }} validated</span
+            >{{ validatedCount }} validée(s)</span
           >
-          <span v-if="errorCount" class="text-destructive">{{ errorCount }} failed</span>
+          <span v-if="errorCount" class="text-destructive">{{ errorCount }} en erreur</span>
         </div>
         <button
           v-if="processedCount > 0 || validatedCount > 0 || errorCount > 0"
           class="text-xs text-muted-foreground hover:text-foreground transition-colors"
           @click="clearCompleted"
         >
-          Clear
+          Effacer
         </button>
       </div>
 
@@ -308,22 +308,22 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
                 </div>
 
                 <p v-if="upload.status === 'pending'" class="text-xs text-muted-foreground">
-                  Pending
+                  En attente
                 </p>
                 <p v-else-if="upload.status === 'uploading'" class="text-xs text-primary">
                   {{ upload.progress }}%
                 </p>
                 <p v-else-if="upload.status === 'processing'" class="text-xs text-amber-600">
                   <template v-if="upload.processingStage === 'analyzing_location'"
-                    >Analyzing location...</template
+                    >Analyse de la position...</template
                   >
                   <template v-else-if="upload.processingStage === 'blurring_faces'"
-                    >Blurring faces...</template
+                    >Floutage des visages...</template
                   >
                   <template v-else-if="upload.processingStage === 'finalizing'"
-                    >Finalizing...</template
+                    >Finalisation...</template
                   >
-                  <template v-else>Starting...</template>
+                  <template v-else>Démarrage...</template>
                 </p>
                 <p
                   v-else-if="upload.status === 'error'"

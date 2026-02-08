@@ -17,7 +17,7 @@ import {
   zoneLines,
   photos as photosTable,
 } from "./db/schema";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 
 // Metro data types (matching front/src/types/metro.ts)
 interface GeoPoint {
@@ -340,6 +340,7 @@ app.get("/process-photo/:runId/status", async (req, res) => {
           takenAt: output.exif?.dateTime ? new Date(output.exif.dateTime) : null,
           camera: output.exif?.camera ?? null,
           status: "pending",
+          thumbnail: output.thumbnail ?? null,
         })
         .returning();
 
@@ -378,29 +379,78 @@ app.get("/process-photo/:runId/status", async (req, res) => {
   }
 });
 
+// List latest validated photos
+app.get("/photos/latest", async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit as string) || 10, 50);
+    const rows = await db
+      .select()
+      .from(photosTable)
+      .where(eq(photosTable.status, "validated"))
+      .orderBy(desc(photosTable.createdAt))
+      .limit(limit);
+
+    const results = rows.map((row) => ({
+      id: row.id,
+      thumbnail: row.thumbnail,
+      accessId: row.accessId,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      takenAt: row.takenAt,
+      camera: row.camera,
+      createdAt: row.createdAt,
+    }));
+
+    res.json(results);
+  } catch (error) {
+    console.error("Error fetching latest photos:", error);
+    res.status(500).json({ error: "Failed to fetch latest photos" });
+  }
+});
+
 // List photos for a given entrance
 app.get("/accesses/:id/photos", async (req, res) => {
   try {
     const accessId = req.params.id;
     const rows = await db.select().from(photosTable).where(eq(photosTable.accessId, accessId));
 
-    const results = await Promise.all(
-      rows.map(async (row) => ({
-        id: row.id,
-        s3Key: row.s3Key,
-        url: await generateDownloadUrl(row.s3Key),
-        latitude: row.latitude,
-        longitude: row.longitude,
-        takenAt: row.takenAt,
-        camera: row.camera,
-        createdAt: row.createdAt,
-      })),
-    );
+    const results = rows.map((row) => ({
+      id: row.id,
+      thumbnail: row.thumbnail,
+      latitude: row.latitude,
+      longitude: row.longitude,
+      takenAt: row.takenAt,
+      camera: row.camera,
+      createdAt: row.createdAt,
+    }));
 
     res.json(results);
   } catch (error) {
     console.error("Error fetching photos:", error);
     res.status(500).json({ error: "Failed to fetch photos" });
+  }
+});
+
+// Get a presigned URL for a single photo (for full-res viewing)
+app.get("/photos/:id/url", async (req, res) => {
+  try {
+    const photoId = parseInt(req.params.id, 10);
+    if (isNaN(photoId)) {
+      res.status(400).json({ error: "Invalid photo ID" });
+      return;
+    }
+
+    const [photo] = await db.select().from(photosTable).where(eq(photosTable.id, photoId));
+    if (!photo) {
+      res.status(404).json({ error: "Photo not found" });
+      return;
+    }
+
+    const url = await generateDownloadUrl(photo.s3Key);
+    res.json({ url });
+  } catch (error) {
+    console.error("Error generating photo URL:", error);
+    res.status(500).json({ error: "Failed to generate photo URL" });
   }
 });
 

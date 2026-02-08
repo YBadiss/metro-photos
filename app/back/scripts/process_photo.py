@@ -13,6 +13,7 @@ Outputs JSON to stdout:
 """
 
 import argparse
+import base64
 import json
 import shutil
 import sys
@@ -110,6 +111,23 @@ def blur_faces(image_path: str, boxes: list[dict], output_path: str) -> None:
     cv2.imwrite(output_path, img, [cv2.IMWRITE_JPEG_QUALITY, 90])
 
 
+def generate_thumbnail(image_path: str, max_width: int = 300, quality: int = 75) -> str:
+    """Generate a small JPEG thumbnail and return it as a base64 string."""
+    img = cv2.imread(image_path)
+    if img is None:
+        raise ValueError(f"Could not load image for thumbnail: {image_path}")
+
+    h, w = img.shape[:2]
+    if w > max_width:
+        scale = max_width / w
+        new_w = max_width
+        new_h = int(h * scale)
+        img = cv2.resize(img, (new_w, new_h), interpolation=cv2.INTER_AREA)
+
+    _, buf = cv2.imencode(".jpg", img, [cv2.IMWRITE_JPEG_QUALITY, quality])
+    return base64.b64encode(buf).decode("ascii")
+
+
 def upload_to_presigned_url(file_path: str, upload_url: str) -> None:
     """Upload a file to an S3 presigned PUT URL."""
     with open(file_path, "rb") as f:
@@ -165,12 +183,18 @@ def main():
         print("Uploading blurred image...", file=sys.stderr)
         upload_to_presigned_url(temp_output, args.upload_url)
 
+        # 5.5 Generate thumbnail from blurred image
+        print("Generating thumbnail...", file=sys.stderr)
+        thumbnail_b64 = generate_thumbnail(temp_output)
+        print(f"Thumbnail size: {len(thumbnail_b64)} chars", file=sys.stderr)
+
         # 6. Output result as JSON to stdout
         result = {
             "faces_count": len(boxes),
             "boxes": boxes,
             "blurred": len(boxes) > 0,
             "exif": exif_data,
+            "thumbnail": thumbnail_b64,
         }
         print(json.dumps(result))
         return 0
