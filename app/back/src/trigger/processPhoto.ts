@@ -1,5 +1,6 @@
 import { task, logger, metadata } from "@trigger.dev/sdk";
 import { python } from "@trigger.dev/python";
+import OpenAI from "openai";
 
 interface ProcessPhotoPayload {
   downloadUrl: string;
@@ -28,6 +29,7 @@ export interface ProcessPhotoResult {
   blurred: boolean;
   exif: ExifData;
   thumbnail?: string;
+  validationConfidence: number;
 }
 
 export const processPhotoTask = task({
@@ -72,6 +74,45 @@ export const processPhotoTask = task({
       blurred: jsonResult.blurred,
     });
 
+    // Stage 3: Validate content with GPT-4o-mini vision
+    metadata.set("stage", "validating_content");
+    logger.info("Stage: validating content with LLM");
+
+    let validationConfidence = 0;
+    try {
+      const openai = new OpenAI();
+      const thumbnail = jsonResult.thumbnail;
+      if (thumbnail) {
+        const chatResponse = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "user",
+              content: [
+                {
+                  type: "image_url",
+                  image_url: { url: `data:image/jpeg;base64,${thumbnail}` },
+                },
+                {
+                  type: "text",
+                  text: 'Is this a photo of a Paris metro entrance? Reply with JSON only: {"confidence": <0-100>}',
+                },
+              ],
+            },
+          ],
+        });
+
+        const text = chatResponse.choices[0]?.message?.content ?? "";
+        const match = text.match(/\{[^}]*"confidence"\s*:\s*(\d+)[^}]*\}/);
+        if (match) {
+          validationConfidence = parseInt(match[1], 10);
+        }
+        logger.info("Validation result", { raw: text, confidence: validationConfidence });
+      }
+    } catch (err) {
+      logger.error("Validation LLM call failed, defaulting to 0", { error: String(err) });
+    }
+
     // Merge EXIF: prefer the dedicated extraction (ran before any processing)
     return {
       ...jsonResult,
@@ -79,6 +120,7 @@ export const processPhotoTask = task({
         ...jsonResult.exif,
         ...exifData,
       },
+      validationConfidence,
     };
   },
 });

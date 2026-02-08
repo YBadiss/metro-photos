@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import { Progress } from "@/components/ui/progress";
-import { XCircle, Image, X, Check, MapPin, ShieldCheck, CheckCircle2 } from "lucide-vue-next";
+import { XCircle, Image, X, Check, MapPin, ShieldCheck, CheckCircle2, ScanEye } from "lucide-vue-next";
 import type { FileUpload } from "@/types/uploads";
 import UploadDropZone from "./UploadDropZone.vue";
 
@@ -144,7 +144,12 @@ async function processPhoto(upload: FileUpload) {
         exif: statusData.result.exif,
         matchedEntrance: statusData.result.matchedEntrance,
       };
-      upload.status = "processed";
+      if (statusData.result.status === "invalid") {
+        upload.status = "error";
+        upload.error = "Photo invalide";
+      } else {
+        upload.status = "processed";
+      }
       return;
     }
 
@@ -283,6 +288,10 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
                     v-else-if="upload.processingStage === 'blurring_faces'"
                     class="w-5 h-5 text-amber-600 animate-pulse"
                   />
+                  <ScanEye
+                    v-else-if="upload.processingStage === 'validating_content'"
+                    class="w-5 h-5 text-amber-600 animate-pulse"
+                  />
                   <CheckCircle2
                     v-else-if="upload.processingStage === 'finalizing'"
                     class="w-5 h-5 text-amber-600 animate-pulse"
@@ -319,6 +328,9 @@ function uploadWithProgress(upload: FileUpload, url: string): Promise<void> {
                   >
                   <template v-else-if="upload.processingStage === 'blurring_faces'"
                     >Floutage des visages...</template
+                  >
+                  <template v-else-if="upload.processingStage === 'validating_content'"
+                    >Vérification du contenu...</template
                   >
                   <template v-else-if="upload.processingStage === 'finalizing'"
                     >Finalisation...</template

@@ -20,7 +20,7 @@ export interface ProcessingResult {
   matchedEntrance?: MatchedEntrance | null;
 }
 
-export type ProcessingStage = "queued" | "analyzing_location" | "blurring_faces" | "finalizing";
+export type ProcessingStage = "queued" | "analyzing_location" | "blurring_faces" | "validating_content" | "finalizing";
 
 export interface FileUpload {
   id: string;

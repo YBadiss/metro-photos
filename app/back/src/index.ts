@@ -17,7 +17,7 @@ import {
   zoneLines,
   photos as photosTable,
 } from "./db/schema";
-import { eq, desc, inArray } from "drizzle-orm";
+import { eq, desc, inArray, and } from "drizzle-orm";
 
 // Metro data types (matching front/src/types/metro.ts)
 interface GeoPoint {
@@ -167,6 +167,7 @@ interface FinalizedResult {
   blurred: boolean;
   exif: ExifData | null;
   matchedEntrance: MatchedEntrance | null;
+  status: string;
 }
 
 const pendingRuns = new Map<string, PendingRun>();
@@ -308,7 +309,7 @@ app.get("/process-photo/:runId/status", async (req, res) => {
       // Perform finalization
       const output = run.output as ProcessPhotoResult;
 
-      console.log("Photo processing result:", JSON.stringify(output, null, 2));
+      console.log("Photo processing result", output.validationConfidence);
 
       // Generate a download URL for the blurred image
       const blurredUrl = await generateDownloadUrl(pending.processedKey);
@@ -329,6 +330,9 @@ app.get("/process-photo/:runId/status", async (req, res) => {
         );
       }
 
+      // Determine status based on LLM validation confidence
+      const photoStatus = output.validationConfidence >= 70 ? "pending" : "invalid";
+
       // Always persist photo metadata
       const [insertedPhoto] = await db
         .insert(photosTable)
@@ -339,7 +343,7 @@ app.get("/process-photo/:runId/status", async (req, res) => {
           longitude: output.exif?.longitude ?? null,
           takenAt: output.exif?.dateTime ? new Date(output.exif.dateTime) : null,
           camera: output.exif?.camera ?? null,
-          status: "pending",
+          status: photoStatus,
           thumbnail: output.thumbnail ?? null,
         })
         .returning();
@@ -352,6 +356,7 @@ app.get("/process-photo/:runId/status", async (req, res) => {
         blurred: output.blurred,
         exif: output.exif ?? null,
         matchedEntrance,
+        status: photoStatus,
       };
 
       // Cache result and clean up pending context
@@ -426,7 +431,7 @@ app.get("/zones/:id/photos", async (req, res) => {
     const rows = await db
       .select()
       .from(photosTable)
-      .where(inArray(photosTable.accessId, accessIds));
+      .where(and(inArray(photosTable.accessId, accessIds), eq(photosTable.status, "validated")));
 
     const results = rows.map((row) => ({
       id: row.id,
@@ -450,7 +455,10 @@ app.get("/zones/:id/photos", async (req, res) => {
 app.get("/accesses/:id/photos", async (req, res) => {
   try {
     const accessId = req.params.id;
-    const rows = await db.select().from(photosTable).where(eq(photosTable.accessId, accessId));
+    const rows = await db
+      .select()
+      .from(photosTable)
+      .where(and(eq(photosTable.accessId, accessId), eq(photosTable.status, "validated")));
 
     const results = rows.map((row) => ({
       id: row.id,
