@@ -222,10 +222,10 @@ async function validate() {
     </div>
 
     <!-- Validate button -->
-    <div class="p-4 border-t flex-shrink-0">
+    <div class="validate-footer p-4 border-t flex-shrink-0">
       <button
         v-if="upload.status === 'validated'"
-        class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium bg-green-100 text-green-700 cursor-default"
+        class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium bg-green-100 text-green-700 cursor-default"
         disabled
       >
         <Check class="w-4 h-4" />
@@ -233,7 +233,7 @@ async function validate() {
       </button>
       <button
         v-else
-        class="w-full flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+        class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-lg text-sm font-medium transition-colors"
         :class="
           upload.photoId && currentAccessId
             ? 'bg-primary text-primary-foreground hover:bg-primary/90'
@@ -265,5 +265,10 @@ async function validate() {
     border-left: none;
     border-top: 1px solid hsl(var(--border));
   }
+}
+
+.validate-footer {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 </style>

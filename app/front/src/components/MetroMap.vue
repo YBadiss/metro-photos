@@ -421,6 +421,7 @@ onMounted(() => {
   map = L.map(mapContainer.value, {
     minZoom,
     maxZoom,
+    tap: false,
   }).setView([48.8566, 2.3522], 12);
 
   createTileLayer(maxZoom).addTo(map);

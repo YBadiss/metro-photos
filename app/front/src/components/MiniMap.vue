@@ -120,6 +120,7 @@ onMounted(() => {
     boxZoom: false,
     keyboard: false,
     attributionControl: false,
+    tap: false,
   }).setView([props.center.lat, props.center.lon], 18);
 
   createTileLayer(19).addTo(map);
