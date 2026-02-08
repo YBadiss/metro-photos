@@ -249,11 +249,18 @@ watch(selectedZoneId, () => {
     flex-direction: column;
   }
 
+  .map-wrapper,
+  .uploads-grid {
+    flex: none;
+    height: 50%;
+  }
+
   .map-sidebar,
   .uploads-sidebar {
     width: auto;
     flex: 1;
     min-height: 0;
+    overflow: hidden;
   }
 }
 
@@ -273,6 +280,7 @@ watch(selectedZoneId, () => {
 .map-wrapper {
   flex: 1;
   min-width: 0;
+  min-height: 0;
   height: 100%;
   background: hsl(var(--card));
 }
@@ -292,6 +300,8 @@ watch(selectedZoneId, () => {
 .uploads-grid {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .uploads-sidebar {
