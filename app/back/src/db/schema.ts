@@ -58,13 +58,12 @@ export const zoneLines = pgTable(
 export const photos = pgTable("photos", {
   id: serial("id").primaryKey(),
   s3Key: text("s3_key").notNull(),
-  accessId: text("access_id")
-    .notNull()
-    .references(() => accesses.id),
+  accessId: text("access_id").references(() => accesses.id),
   latitude: doublePrecision("latitude"),
   longitude: doublePrecision("longitude"),
   takenAt: timestamp("taken_at", { withTimezone: true }),
   camera: text("camera"),
+  status: text("status").notNull().default("pending"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 

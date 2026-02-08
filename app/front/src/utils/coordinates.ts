@@ -29,3 +29,18 @@ export function lambert93ToWGS84(x: number, y: number): [number, number] {
 export function wgs84ToLambert93(lat: number, lon: number): [number, number] {
   return proj4("EPSG:4326", "EPSG:2154", [lon, lat]) as [number, number];
 }
+
+const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+/**
+ * Calculate the distance in meters between two WGS84 points using the Haversine formula
+ */
+export function haversineMeters(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371000;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}

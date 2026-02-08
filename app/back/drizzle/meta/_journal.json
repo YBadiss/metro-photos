@@ -15,6 +15,13 @@
       "when": 1770559256230,
       "tag": "0001_dear_vengeance",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1770561896778,
+      "tag": "0002_boring_toad",
+      "breakpoints": true
     }
   ]
 }

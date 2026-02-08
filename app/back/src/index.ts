@@ -96,7 +96,7 @@ const PORT = process.env.PORT || 3000;
 // Enable CORS for frontend
 app.use((_req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PATCH, OPTIONS");
   res.header("Access-Control-Allow-Headers", "Content-Type");
   next();
 });
@@ -285,19 +285,22 @@ app.post("/process-photo", async (req, res) => {
       );
     }
 
-    // Persist photo metadata if matched to an entrance
-    if (matchedEntrance) {
-      await db.insert(photosTable).values({
+    // Always persist photo metadata
+    const [insertedPhoto] = await db
+      .insert(photosTable)
+      .values({
         s3Key: processedKey,
-        accessId: matchedEntrance.entrance.id,
+        accessId: matchedEntrance?.entrance.id ?? null,
         latitude: output.exif?.latitude ?? null,
         longitude: output.exif?.longitude ?? null,
         takenAt: output.exif?.dateTime ? new Date(output.exif.dateTime) : null,
         camera: output.exif?.camera ?? null,
-      });
-    }
+        status: "pending",
+      })
+      .returning();
 
     res.json({
+      photoId: insertedPhoto.id,
       blurredKey: processedKey,
       blurredUrl,
       facesCount: output.faces_count,
@@ -334,6 +337,63 @@ app.get("/accesses/:id/photos", async (req, res) => {
   } catch (error) {
     console.error("Error fetching photos:", error);
     res.status(500).json({ error: "Failed to fetch photos" });
+  }
+});
+
+// Update a photo (validate, reassign entrance)
+app.patch("/photos/:id", async (req, res) => {
+  try {
+    const photoId = parseInt(req.params.id, 10);
+    if (isNaN(photoId)) {
+      res.status(400).json({ error: "Invalid photo ID" });
+      return;
+    }
+
+    const { status, accessId } = req.body;
+
+    const updates: Record<string, unknown> = {};
+
+    if (status !== undefined) {
+      if (status !== "validated") {
+        res.status(400).json({ error: "Status can only be set to 'validated'" });
+        return;
+      }
+      updates.status = status;
+    }
+
+    if (accessId !== undefined) {
+      // Verify access exists
+      const [access] = await db.select().from(accessesTable).where(eq(accessesTable.id, accessId));
+      if (!access) {
+        res.status(404).json({ error: "Access not found" });
+        return;
+      }
+      updates.accessId = accessId;
+    }
+
+    if (Object.keys(updates).length === 0) {
+      res.status(400).json({ error: "No valid fields to update" });
+      return;
+    }
+
+    const [updated] = await db
+      .update(photosTable)
+      .set(updates)
+      .where(eq(photosTable.id, photoId))
+      .returning();
+
+    if (!updated) {
+      res.status(404).json({ error: "Photo not found" });
+      return;
+    }
+
+    // Generate presigned URL for the response
+    const url = await generateDownloadUrl(updated.s3Key);
+
+    res.json({ ...updated, url });
+  } catch (error) {
+    console.error("Error updating photo:", error);
+    res.status(500).json({ error: "Failed to update photo" });
   }
 });
 
