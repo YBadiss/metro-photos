@@ -1,53 +1,34 @@
 #!/bin/bash
+# Uploads the already-built dist/ (CI builds, migrates and deploys Trigger.dev tasks in an earlier step,
+# before the SSH key is loaded), writes the production .env, installs runtime deps on the droplet and
+# (re)starts the API under PM2.
 set -euo pipefail
 
-SSH_OPTIONS=("$@")
-
-# Build the project
-bun run build
-
-# Deploy Trigger.dev tasks (uses TRIGGER_ACCESS_TOKEN for CLI auth)
-TRIGGER_ACCESS_TOKEN="$TRIGGER_DEPLOY_KEY" bunx trigger deploy
-
+SERVER="${DEPLOY_USER:-root}@${DEPLOY_HOST:-167.71.143.97}"
 timestamp=$(date +%s)
 DEPLOY_DIR="/var/www/api.metro-boulot.photos"
+DIR="${DEPLOY_DIR}-${timestamp}"
 
-# Create target directory with proper permissions
-ssh "${SSH_OPTIONS[@]}" root@167.71.143.97 "mkdir -p ${DEPLOY_DIR}-${timestamp} && chmod 755 ${DEPLOY_DIR}-${timestamp}"
+[ -d dist ] || { echo "dist/ not found: run bun run build first" >&2; exit 1; }
 
-# Deploy the built files
-scp "${SSH_OPTIONS[@]}" -r dist/* root@167.71.143.97:${DEPLOY_DIR}-${timestamp}/
-scp "${SSH_OPTIONS[@]}" package.json bun.lock root@167.71.143.97:${DEPLOY_DIR}-${timestamp}/
+ssh "$SERVER" "mkdir -p $DIR && chmod 755 $DIR"
+scp -r dist/* package.json bun.lock "$SERVER:$DIR/"
 
-# Copy production env file
-if [ -f .env.production ]; then
-    echo "Copying production env file..."
-    # If S3_SECRET_ACCESS_KEY is in the shell env, then use it to update .env.production
-    if [ -n "$S3_SECRET_ACCESS_KEY" ]; then
-        echo "S3_SECRET_ACCESS_KEY found in shell env, updating .env.production..."
-        sed -i "s/S3_SECRET_ACCESS_KEY=.*/S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY/" .env.production
-    fi
-    if [ -n "$TRIGGER_API_KEY" ]; then
-        echo "TRIGGER_API_KEY found in shell env, updating .env.production..."
-        sed -i "s/TRIGGER_SECRET_KEY=.*/TRIGGER_SECRET_KEY=$TRIGGER_API_KEY/" .env.production
-    fi
-    if [ -n "$DATABASE_URL" ]; then
-        echo "DATABASE_URL found in shell env, updating .env.production..."
-        sed -i "s|DATABASE_URL=.*|DATABASE_URL=$DATABASE_URL|" .env.production
-    fi
-    scp "${SSH_OPTIONS[@]}" .env.production root@167.71.143.97:${DEPLOY_DIR}-${timestamp}/.env
-fi
+# Production env: committed .env.production with secrets filled in from the CI environment.
+env_file=$(mktemp)
+trap 'rm -f "$env_file"' EXIT
+cp .env.production "$env_file"
+[ -n "${S3_SECRET_ACCESS_KEY:-}" ] && sed -i "s|^S3_SECRET_ACCESS_KEY=.*|S3_SECRET_ACCESS_KEY=$S3_SECRET_ACCESS_KEY|" "$env_file"
+[ -n "${TRIGGER_API_KEY:-}" ] && sed -i "s|^TRIGGER_SECRET_KEY=.*|TRIGGER_SECRET_KEY=$TRIGGER_API_KEY|" "$env_file"
+[ -n "${DATABASE_URL:-}" ] && sed -i "s|^DATABASE_URL=.*|DATABASE_URL=$DATABASE_URL|" "$env_file"
+scp "$env_file" "$SERVER:$DIR/.env"
+ssh "$SERVER" "chmod 600 $DIR/.env"
 
-# Install production dependencies
-ssh "${SSH_OPTIONS[@]}" root@167.71.143.97 "cd ${DEPLOY_DIR}-${timestamp} && bun install --frozen-lockfile --production"
+ssh "$SERVER" "cd $DIR && bun install --frozen-lockfile --production"
+ssh "$SERVER" "ln -sfn $DIR $DEPLOY_DIR"
 
-# Create a new symlink (remove old one if exists)
-ssh "${SSH_OPTIONS[@]}" root@167.71.143.97 "rm -f ${DEPLOY_DIR} && ln -s ${DEPLOY_DIR}-${timestamp} ${DEPLOY_DIR}"
+# Start from the new directory and `pm2 save`, so the process comes back after a reboot.
+ssh "$SERVER" "pm2 delete metro-api >/dev/null 2>&1 || true; cd $DIR && pm2 start index.js --name metro-api --interpreter bun && pm2 save"
 
-# Restart the backend service with PM2
-ssh "${SSH_OPTIONS[@]}" root@167.71.143.97 "cd ${DEPLOY_DIR} && pm2 delete metro-api 2>/dev/null || true && pm2 start index.js --name metro-api --interpreter bun"
-
-# Clean up old deployments, keep the 3 most recent
-ssh "${SSH_OPTIONS[@]}" root@167.71.143.97 'ls -dt /var/www/api.metro-boulot.photos-* | tail -n +4 | xargs rm -rf --'
-
-echo "Backend deployed! Make sure PM2 is set to start on boot: pm2 startup && pm2 save"
+# Keep the 3 most recent deploys
+ssh "$SERVER" "ls -d ${DEPLOY_DIR}-[0-9]* | sort -t- -k2 -n | head -n -3 | xargs -r -t rm -rf --"
