@@ -1,21 +1,15 @@
 #!/bin/bash
+# Uploads the already-built dist/ (CI builds with VITE_API_URL in an earlier step, before the SSH key is
+# loaded), swaps the live symlink and keeps the 3 latest deploys.
 set -euo pipefail
 
-SSH_OPTIONS=("$@")
-
-# Set production API URL and build
-VITE_API_URL=https://api.metro-boulot.photos bun run build
-
+SERVER="${DEPLOY_USER:-root}@${DEPLOY_HOST:-167.71.143.97}"
+BASE="/var/www/metro-boulot.photos"
 timestamp=$(date +%s)
 
-# Create target directory with proper permissions
-ssh "${SSH_OPTIONS[@]}" root@167.71.143.97 "mkdir -p /var/www/metro-boulot.photos-${timestamp} && chmod 755 /var/www/metro-boulot.photos-${timestamp}"
+[ -d dist ] || { echo "dist/ not found: build first" >&2; exit 1; }
 
-# Deploy the built static files
-scp "${SSH_OPTIONS[@]}" -r dist/* root@167.71.143.97:/var/www/metro-boulot.photos-${timestamp}/
-
-# Create a new symlink (remove old one if exists)
-ssh "${SSH_OPTIONS[@]}" root@167.71.143.97 "rm -f /var/www/metro-boulot.photos && ln -s /var/www/metro-boulot.photos-${timestamp} /var/www/metro-boulot.photos"
-
-# Clean up old deployments, keep the 3 most recent
-ssh "${SSH_OPTIONS[@]}" root@167.71.143.97 'ls -dt /var/www/metro-boulot.photos-* | tail -n +4 | xargs rm -rf --'
+ssh "$SERVER" "mkdir -p ${BASE}-${timestamp} && chmod 755 ${BASE}-${timestamp}"
+scp -r dist/* "$SERVER:${BASE}-${timestamp}/"
+ssh "$SERVER" "ln -sfn ${BASE}-${timestamp} ${BASE}"
+ssh "$SERVER" "ls -d ${BASE}-[0-9]* | sort -t- -k2 -n | head -n -3 | xargs -r -t rm -rf --"
